@@ -52,7 +52,6 @@
             ${message ? `<div class="attendance-alert" role="alert">${escapeHtml(message)}</div>` : ""}
             <button class="btn btn-primary attendance-submit" type="submit">Masuk</button>
           </form>
-          <a class="attendance-back-link" href="login.html">Kembali ke ARIMA Management System</a>
         </section>
       </div>
     `;
