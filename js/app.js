@@ -1836,7 +1836,10 @@ window.App = (() => {
 
               {
                 key: "PROGRAM",
-                label: "Program"
+                label: "Program",
+                render: value => /SSW/i.test(String(value || "")) || String(value || "").trim().toUpperCase() === "ENGINEERING"
+                  ? "TOKUTEI GINOU"
+                  : esc(value || "")
               },
 
               {
@@ -3737,12 +3740,12 @@ window.App = (() => {
               ? "PENDING"
               : "";
           const legacyProgram = String(existing?.PROGRAM || "").trim().toUpperCase();
-          const existingValue = field.key === "PROGRAM" && legacyProgram === "SSW"
+          const existingValue = field.key === "PROGRAM" && legacyProgram.indexOf("SSW") >= 0
             ? "TOKUTEI GINOU"
             : field.key === "PROGRAM" && legacyProgram === "ENGINEERING"
               ? "TOKUTEI GINOU"
               : field.key === "SSW" && existing
-                ? existing.SSW || (legacyProgram === "SSW" ? "YA" : "TIDAK")
+                ? existing.SSW || (legacyProgram.indexOf("SSW") >= 0 ? "YA" : "TIDAK")
                 : existing?.[field.key];
           const rawValue = existingValue ?? options.defaults?.[field.key] ?? field.defaultValue ?? defaultValue;
           const value = field.type === "date"
