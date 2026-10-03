@@ -52,7 +52,8 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
       );
     }
 
-    location.replace('dashboard.html?v=20261002.1');
+    const role = String(result.user.role || result.user.ROLE || '').trim().toUpperCase();
+    location.replace(role === 'SISWA' || role === 'SENSEI' ? 'attendance.html' : 'dashboard.html?v=20261003.6');
   } catch (ex) { err.textContent = ex.message; err.classList.remove('hidden'); }
 });
 </script>
