@@ -16,17 +16,16 @@ Sistem manajemen LPKS Arima Persada dengan frontend web dan database Google Spre
 ## Database
 
 Spreadsheet ID:
-`1xm6FqlvKLi2a2WP0vy3qfjEbCz3CggZnMxc6GcvGaA4`
+`1hsfZFAS24iI6w2dQRONgOhg2j7WCa-_OcJRFG9zDKOw`
 
-## Demo
+## Login awal
 
-Frontend dapat dibuka langsung untuk preview UI. Demo mode menggunakan:
+Backend tidak lagi memakai demo fallback. Jika sheet `USERS` masih kosong, buka Google Apps Script dan jalankan fungsi `setupInitialAdmin()` satu kali. Fungsi tersebut membuat akun administrator awal:
 
-- ADMIN001 / admin123
-- SENSEI001 / admin123
-- SISWA001 / admin123
+- ID: `ADMIN001`
+- Password awal: `admin123`
 
-Password demo tersebut hanya untuk preview. Jangan digunakan untuk produksi.
+Setelah login berhasil, ubah password melalui mekanisme administrasi aplikasi sebelum digunakan untuk operasional.
 
 ## Produksi
 
@@ -71,7 +70,7 @@ current Google Apps Script Web App URL in `js/config.js`.
 The Apps Script endpoint is configured in `js/config.js`. Backend changes in
 `api/Code.gs` must be copied to the existing Apps Script project and deployed as
 a new version of the existing web app deployment for new actions (including
-`finance`) to become available; keep the deployment URL unchanged. Do not
+`finance`) to become available; the production deployment URL is configured in `js/config.js`. Do not
 replace the production backend with a different project or deployment.
 
 After publishing/updating GitHub Pages:
