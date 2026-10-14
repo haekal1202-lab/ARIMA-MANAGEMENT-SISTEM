@@ -339,18 +339,47 @@ window.ArimaPdf = (() => {
     const today = new Date().toLocaleDateString("id-ID", {
       day: "numeric", month: "long", year: "numeric"
     });
+
+    // Pisahkan "Nama - Jabatan" jadi 2 baris
+    const raw = String(name || "").trim();
+    let personName = raw;
+    let personRole = "";
+    const sepIdx = raw.lastIndexOf(" - ");
+    if (sepIdx > 0) {
+      personName = raw.slice(0, sepIdx).trim();
+      personRole = raw.slice(sepIdx + 3).trim();
+    }
+
+    const blockWidth = 60;
+
+    // Kota + tanggal (kanan)
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(9);
     pdf.setTextColor(...COLOR.body);
     pdf.text(`${city}, ${today}`, x, y);
+
+    // "Hormat kami,"
     pdf.text(role || "", x, y + 4.5);
 
+    // Ruang tanda tangan (kosong) — tinggi 20mm
+    // Nama di atas garis
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9.5);
+    pdf.setTextColor(...COLOR.dark);
+    pdf.text(personName || "-", x, y + 26);
+
+    // Garis
     pdf.setDrawColor(120, 120, 125);
     pdf.setLineWidth(0.3);
-    pdf.line(x, y + 24, x + 50, y + 24);
+    pdf.line(x, y + 28.5, x + blockWidth, y + 28.5);
 
-    pdf.setFont("helvetica", "bold");
-    pdf.text(name || "", x, y + 29);
+    // Jabatan di bawah garis
+    if (personRole) {
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...COLOR.muted);
+      pdf.text(personRole, x, y + 33);
+    }
   }
 
   /**
