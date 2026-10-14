@@ -118,7 +118,7 @@
     rows.push([isSensei ? "Selesai" : "Jam keluar", log.JAM_KELUAR || "-"]);
 
     if (isSensei) {
-      rows.push(["Durasi dibayar", formatDuration(log.DURASI_MENIT)]);
+      rows.push(["Durasi waktu normal", formatDuration(log.DURASI_MENIT)]);
       rows.push(["Jumlah JP (45 menit)", log.JP === null || log.JP === undefined || log.JP === "" ? "-" : String(log.JP)]);
     }
     rows.push(["Catatan", log.CATATAN || "-"]);
