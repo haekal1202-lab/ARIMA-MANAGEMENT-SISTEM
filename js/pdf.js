@@ -422,7 +422,7 @@ window.ArimaPdf = (() => {
     // Tabel rincian
     y = drawItemsTable(
       pdf, MARGIN, y, inner,
-      ["Keterangan", "Metode", "Referensi", "Jumlah"],
+      ["Keterangan", "Metode", "Penerima", "Jumlah"],
       [[
         payment.NOTES || ("Pembayaran tagihan " + (payment.BILLING_ID || "-")),
         payment.PAYMENT_METHOD || "-",
@@ -511,9 +511,17 @@ window.ArimaPdf = (() => {
     y += 8;
 
     // Status
+    // Status
     drawStatusRow(pdf, MARGIN, y, "Status tagihan: ", invoice.STATUS || "-");
-    y += 10;
+    y += 6;
 
+    // Penerima
+    if (invoice.PENERIMA) {
+      drawStatusRow(pdf, MARGIN, y, "Penerima: ", invoice.PENERIMA);
+      y += 6;
+    }
+    y += 4;
+    
     // Terbilang
     pdf.setFont("helvetica", "italic");
     pdf.setFontSize(9);
@@ -637,7 +645,14 @@ window.ArimaPdf = (() => {
       pdf.setTextColor(...COLOR.dark);
       pdf.text(dateText(salaryRow.PAYMENT_DATE), pageWidth / 2 + 24, y);
     }
-    y += 10;
+    y += 6;
+
+    // Penerima
+    if (salaryRow.PENERIMA) {
+      drawStatusRow(pdf, MARGIN, y, "Penerima: ", salaryRow.PENERIMA);
+      y += 6;
+    }
+    y += 4;
 
     // Catatan (jika ada)
     if (salaryRow.NOTES) {
