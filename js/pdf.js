@@ -423,10 +423,10 @@ window.ArimaPdf = (() => {
     y = drawItemsTable(
       pdf, MARGIN, y, inner,
       ["Keterangan", "Metode", "Penerima", "Jumlah"],
-      [[
+            [[
         payment.NOTES || ("Pembayaran tagihan " + (payment.BILLING_ID || "-")),
         payment.PAYMENT_METHOD || "-",
-        payment.PENERIMA || "-",
+        payment.REFERENCE_NO || "-",
         formatRupiah(payment.AMOUNT)
       ]],
       [inner * 0.55, inner * 0.15, inner * 0.15, inner * 0.15]
