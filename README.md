@@ -20,12 +20,23 @@ Spreadsheet ID:
 
 ## Login awal
 
-Backend tidak lagi memakai demo fallback. Jika sheet `USERS` masih kosong, buka Google Apps Script dan jalankan fungsi `setupInitialAdmin()` satu kali. Fungsi tersebut membuat akun administrator awal:
+Backend tidak memakai akun demo maupun password bawaan. Jika sheet `USERS` masih
+kosong, buka Google Apps Script dan jalankan fungsi `setupInitialAdmin()` satu kali.
+Fungsi tersebut membuat akun `ADMIN001` dengan **password acak** yang hanya muncul di
+log eksekusi (View → Logs). Catat password itu, login, lalu segera ganti lewat
+**Pengaturan → Akun Pengguna**.
 
-- ID: `ADMIN001`
-- Password awal: `admin123`
+## Keamanan
 
-Setelah login berhasil, ubah password melalui mekanisme administrasi aplikasi sebelum digunakan untuk operasional.
+- Token sesi ditandatangani dengan secret acak (`ARIMA_TOKEN_SECRET`) di Script
+  Properties; tidak ada secret di kode sumber. Secret dibuat otomatis saat pertama dipakai.
+- Hash password memakai `ARIMA_AUTH_SECRET`. Deployment lama tetap memakai nilai yang
+  sudah tersimpan sehingga password lama tidak rusak.
+- Semua action data memerlukan token. Siswa dan sensei hanya dapat memakai
+  `attendanceProfile` dan `selfAttendance`; data siswa, sensei, tagihan,
+  pembayaran, keuangan, payroll, dan akun hanya untuk ADMIN.
+- Login dibatasi 5 percobaan gagal per ID dalam 15 menit.
+- Operasi tulis memakai `LockService` agar ID tidak ganda saat dua admin menyimpan bersamaan.
 
 ## Produksi
 

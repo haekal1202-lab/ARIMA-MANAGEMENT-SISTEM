@@ -7,7 +7,7 @@ window.App = (() => {
     ["sensei", "Sensei", "◎"],
     ["attendance", "Absensi", "✓"],
     ["billing", "Tagihan", "Rp"],
-    ["receipts", "Kwitansi", "▣"],
+    ["receipts", "Kuitansi", "▣"],
     ["finance", "Mutasi Keuangan", "↔"],
     ["salary", "Payroll Sensei", "¥"],
     ["reports", "Laporan", "▤"],
@@ -16,360 +16,76 @@ window.App = (() => {
 
   let user = null;
 
-  /*
-   * =========================================================
+  /* =========================================================
    * FORM CONFIGURATION
-   * =========================================================
-   */
+   * ========================================================= */
 
   const FORM_CONFIG = {
-
     students: {
       title: "Tambah Siswa",
       editTitle: "Edit Siswa",
       description: "Lengkapi identitas, kontak keluarga, dan program belajar siswa.",
       idField: "ID_SISWA",
-
       fields: [
-        {
-          key: "ID_SISWA",
-          label: "ID Siswa",
-          type: "text",
-          required: false,
-          placeholder: "Kosongkan untuk ID otomatis"
-        },
-
-        {
-          key: "NAMA",
-          label: "Nama Siswa",
-          type: "text",
-          required: true,
-          placeholder: "Nama lengkap siswa"
-        },
-
-        {
-          key: "NIK",
-          label: "NIK",
-          type: "text",
-          required: false,
-          placeholder: "Nomor Induk Kependudukan"
-        },
-
-        {
-          key: "NO_WA",
-          label: "No. WhatsApp",
-          type: "text",
-          required: true,
-          placeholder: "08xxxxxxxxxx"
-        },
-
-        {
-          key: "NAMA_ORANG_TUA",
-          label: "Nama Orang Tua / Wali",
-          type: "text",
-          required: true,
-          placeholder: "Nama orang tua / wali"
-        },
-
-        {
-          key: "NO_WA_ORANG_TUA",
-          label: "No. WhatsApp Orang Tua / Wali",
-          type: "text",
-          required: false,
-          placeholder: "08xxxxxxxxxx"
-        },
-
-        {
-          key: "PROGRAM",
-          label: "Program",
-          type: "select",
-          required: true,
-          options: [
-            "MAGANG",
-            "SSW",
-            "ENGINEERING",
-            "ENGINEER"
-          ]
-        },
-
-        {
-          key: "ASRAMA",
-          label: "Asrama",
-          type: "select",
-          required: true,
-          options: [
-            "YA",
-            "TIDAK"
-          ]
-        },
-
-        {
-          key: "TANGGAL_MASUK",
-          label: "Tanggal Masuk",
-          type: "date",
-          required: true
-        },
-
-        {
-          key: "STATUS",
-          label: "Status",
-          type: "select",
-          required: true,
-          options: [
-            "AKTIF",
-            "NONAKTIF",
-            "LULUS",
-            "KELUAR"
-          ]
-        }
+        { key: "ID_SISWA", label: "ID Siswa", type: "text", required: false, placeholder: "Kosongkan untuk ID otomatis" },
+        { key: "NAMA", label: "Nama Siswa", type: "text", required: true, placeholder: "Nama lengkap siswa" },
+        { key: "NIK", label: "NIK", type: "text", required: false, placeholder: "Nomor Induk Kependudukan" },
+        { key: "NO_WA", label: "No. WhatsApp", type: "text", required: true, placeholder: "08xxxxxxxxxx" },
+        { key: "NAMA_ORANG_TUA", label: "Nama Orang Tua / Wali", type: "text", required: true, placeholder: "Nama orang tua / wali" },
+        { key: "NO_WA_ORANG_TUA", label: "No. WhatsApp Orang Tua / Wali", type: "text", required: false, placeholder: "08xxxxxxxxxx" },
+        { key: "PROGRAM", label: "Program", type: "select", required: true, options: ["MAGANG", "SSW", "ENGINEERING", "ENGINEER"] },
+        { key: "ASRAMA", label: "Asrama", type: "select", required: true, options: ["YA", "TIDAK"] },
+        { key: "TANGGAL_MASUK", label: "Tanggal Masuk", type: "date", required: true },
+        { key: "STATUS", label: "Status", type: "select", required: true, options: ["AKTIF", "NONAKTIF", "LULUS", "KELUAR"] }
       ]
     },
-
 
     sensei: {
-
       title: "Tambah Sensei",
-
       editTitle: "Edit Sensei",
-
       description: "Simpan profil pengajar dan tarif per JP untuk perhitungan payroll.",
-
       idField: "ID_SENSEI",
-
       fields: [
-
-        {
-          key: "ID_SENSEI",
-          label: "ID Sensei",
-          type: "text",
-          required: false,
-          placeholder: "Kosongkan untuk ID otomatis"
-        },
-
-        {
-          key: "NAMA",
-          label: "Nama Sensei",
-          type: "text",
-          required: true,
-          placeholder: "Nama lengkap sensei"
-        },
-
-        {
-          key: "NO_WA",
-          label: "No. WhatsApp",
-          type: "text",
-          required: false,
-          placeholder: "08xxxxxxxxxx"
-        },
-
-        {
-          key: "EMAIL",
-          label: "Email",
-          type: "email",
-          required: false,
-          placeholder: "email@example.com"
-        },
-
-        {
-          key: "TARIF_PER_JAM",
-          label: "Tarif per JP (45 menit)",
-          type: "number",
-          required: false,
-          placeholder: "0"
-        },
-
-        {
-          key: "STATUS",
-          label: "Status",
-          type: "select",
-          required: true,
-          options: [
-            "AKTIF",
-            "NONAKTIF"
-          ]
-        }
-
+        { key: "ID_SENSEI", label: "ID Sensei", type: "text", required: false, placeholder: "Kosongkan untuk ID otomatis" },
+        { key: "NAMA", label: "Nama Sensei", type: "text", required: true, placeholder: "Nama lengkap sensei" },
+        { key: "NO_WA", label: "No. WhatsApp", type: "text", required: false, placeholder: "08xxxxxxxxxx" },
+        { key: "EMAIL", label: "Email", type: "email", required: false, placeholder: "email@example.com" },
+        { key: "TARIF_PER_JAM", label: "Tarif per JP (45 menit)", type: "number", required: false, placeholder: "0" },
+        { key: "STATUS", label: "Status", type: "select", required: true, options: ["AKTIF", "NONAKTIF"] }
       ]
-
     },
-
 
     attendance: {
-
       title: "Catat Absensi",
-
       editTitle: "Edit Absensi",
-
       idField: "ATTENDANCE_ID",
-
       fields: [
-
-        {
-          key: "ATTENDANCE_ID",
-          label: "ID Absensi",
-          type: "text",
-          required: false,
-          placeholder: "Kosongkan untuk ID otomatis"
-        },
-
-        {
-          key: "ACTOR_ID",
-          label: "ID Siswa / Sensei",
-          type: "text",
-          required: true,
-          placeholder: "ID aktor"
-        },
-
-        {
-          key: "ACTOR_TYPE",
-          label: "Tipe Aktor",
-          type: "select",
-          required: true,
-          options: [
-            "STUDENT",
-            "SENSEI"
-          ]
-        },
-
-        {
-          key: "SESSION_ID",
-          label: "Session ID",
-          type: "text",
-          required: false,
-          placeholder: "Session ID"
-        },
-
-        {
-          key: "CLASS_ID",
-          label: "Class ID",
-          type: "text",
-          required: false,
-          placeholder: "Class ID"
-        },
-
-        {
-          key: "TANGGAL",
-          label: "Tanggal",
-          type: "date",
-          required: true
-        },
-
-        {
-          key: "JAM_MASUK",
-          label: "Jam Masuk",
-          type: "time",
-          required: false
-        },
-
-        {
-          key: "JAM_KELUAR",
-          label: "Jam Keluar",
-          type: "time",
-          required: false
-        },
-
-        {
-          key: "STATUS",
-          label: "Status",
-          type: "select",
-          required: true,
-          options: [
-            "HADIR",
-            "IZIN",
-            "SAKIT",
-            "ALPA",
-            "TERLAMBAT"
-          ]
-        },
-
-        {
-          key: "CATATAN",
-          label: "Catatan",
-          type: "textarea",
-          required: false
-        }
-
+        { key: "ATTENDANCE_ID", label: "ID Absensi", type: "text", required: false, placeholder: "Kosongkan untuk ID otomatis" },
+        { key: "ACTOR_ID", label: "ID Siswa / Sensei", type: "text", required: true, placeholder: "ID aktor" },
+        { key: "ACTOR_TYPE", label: "Tipe Aktor", type: "select", required: true, options: ["STUDENT", "SENSEI"] },
+        { key: "SESSION_ID", label: "Session ID", type: "text", required: false, placeholder: "Session ID" },
+        { key: "CLASS_ID", label: "Class ID", type: "text", required: false, placeholder: "Class ID" },
+        { key: "TANGGAL", label: "Tanggal", type: "date", required: true },
+        { key: "JAM_MASUK", label: "Jam Masuk", type: "time", required: false },
+        { key: "JAM_KELUAR", label: "Jam Keluar", type: "time", required: false },
+        { key: "STATUS", label: "Status", type: "select", required: true, options: ["HADIR", "IZIN", "SAKIT", "ALPA", "TERLAMBAT"] },
+        { key: "CATATAN", label: "Catatan", type: "textarea", required: false }
       ]
-
     },
 
-
     billing: {
-
       title: "Tambah Tagihan",
-
       editTitle: "Edit Tagihan",
-
       idField: "BILLING_ID",
-
       fields: [
-        {
-          key: "ID_SISWA",
-          label: "ID Siswa",
-          type: "text",
-          required: true
-        },
-
-        {
-          key: "DESCRIPTION",
-          label: "Deskripsi",
-          type: "text",
-          required: true,
-          placeholder: "Contoh: Biaya belajar bulan Oktober"
-        },
-
-        {
-          key: "CATEGORY",
-          label: "Kategori",
-          type: "select",
-          required: true,
-          options: [
-            "BELAJAR",
-            "ASRAMA",
-            "JOB",
-            "LAINNYA"
-          ]
-        },
-
-        {
-          key: "AMOUNT",
-          label: "Jumlah",
-          type: "number",
-          required: true,
-          placeholder: "0"
-        },
-
-        {
-          key: "DUE_DATE",
-          label: "Jatuh Tempo",
-          type: "date",
-          required: true
-        },
-
-        {
-          key: "STATUS",
-          label: "Status",
-          type: "select",
-          required: true,
-          options: [
-            "PENDING",
-            "BELUM BAYAR",
-            "BELUM LUNAS",
-            "LUNAS",
-            "TERTUNGGAK",
-            "CICILAN"
-          ]
-        },
-
-        {
-          key: "NOTES",
-          label: "Catatan",
-          type: "textarea",
-          required: false
-        }
-
+        { key: "ID_SISWA", label: "ID Siswa", type: "text", required: true },
+        { key: "DESCRIPTION", label: "Deskripsi", type: "text", required: true, placeholder: "Contoh: Biaya belajar bulan Oktober" },
+        { key: "CATEGORY", label: "Kategori", type: "select", required: true, options: ["BELAJAR", "ASRAMA", "JOB", "LAINNYA"] },
+        { key: "AMOUNT", label: "Jumlah", type: "number", required: true, placeholder: "0" },
+        { key: "DUE_DATE", label: "Jatuh Tempo", type: "date", required: true },
+        { key: "STATUS", label: "Status", type: "select", required: true, options: ["PENDING", "BELUM BAYAR", "BELUM LUNAS", "LUNAS", "TERTUNGGAK", "CICILAN"] },
+        { key: "NOTES", label: "Catatan", type: "textarea", required: false }
       ]
-
     },
 
     finance: {
@@ -378,1642 +94,594 @@ window.App = (() => {
       description: "Catat pemasukan atau pengeluaran harian.",
       idField: "TRANSACTION_ID",
       fields: [
-        {
-          key: "DATE",
-          label: "Tanggal",
-          type: "date",
-          required: true
-        },
-        {
-          key: "TYPE",
-          label: "Jenis Mutasi",
-          type: "select",
-          required: true,
-          options: ["PEMASUKAN", "PENGELUARAN"]
-        },
-        {
-          key: "CATEGORY",
-          label: "Kategori",
-          type: "select",
-          required: true,
-          options: [
-            "SPP",
-            "Pendaftaran",
-            "Seragam",
-            "Donasi",
-            "Gaji",
-            "Operasional",
-            "Utilitas",
-            "Transportasi",
-            "Konsumsi",
-            "Perlengkapan",
-            "Lainnya"
-          ]
-        },
-        {
-          key: "DESCRIPTION",
-          label: "Keterangan",
-          type: "text",
-          required: true,
-          placeholder: "Contoh: pembayaran SPP bulan Oktober"
-        },
-        {
-          key: "AMOUNT",
-          label: "Nominal",
-          type: "number",
-          required: true,
-          placeholder: "0"
-        },
-        {
-          key: "PAYMENT_METHOD",
-          label: "Metode",
-          type: "select",
-          required: true,
-          options: ["CASH", "TRANSFER", "QRIS", "LAINNYA"]
-        },
-        {
-          key: "REFERENCE_NO",
-          label: "No. Referensi",
-          type: "text",
-          required: false
-        },
-        {
-          key: "NOTES",
-          label: "Catatan",
-          type: "textarea",
-          required: false
-        }
+        { key: "DATE", label: "Tanggal", type: "date", required: true },
+        { key: "TYPE", label: "Jenis Mutasi", type: "select", required: true, options: ["PEMASUKAN", "PENGELUARAN"] },
+        { key: "CATEGORY", label: "Kategori", type: "select", required: true, options: ["SPP", "Pendaftaran", "Seragam", "Donasi", "Gaji", "Operasional", "Utilitas", "Transportasi", "Konsumsi", "Perlengkapan", "Lainnya"] },
+        { key: "DESCRIPTION", label: "Keterangan", type: "text", required: true, placeholder: "Contoh: pembayaran SPP bulan Oktober" },
+        { key: "AMOUNT", label: "Nominal", type: "number", required: true, placeholder: "0" },
+        { key: "PAYMENT_METHOD", label: "Metode", type: "select", required: true, options: ["CASH", "TRANSFER", "QRIS", "LAINNYA"] },
+        { key: "REFERENCE_NO", label: "No. Referensi", type: "text", required: false },
+        { key: "NOTES", label: "Catatan", type: "textarea", required: false }
       ]
     },
 
     payments: {
-
       title: "Tambah Pembayaran",
-
       editTitle: "Edit Pembayaran",
-
       idField: "PAYMENT_ID",
-
       fields: [
-        {
-          key: "BILLING_ID",
-          label: "ID Tagihan",
-          type: "text",
-          required: true
-        },
-
-        {
-          key: "ID_SISWA",
-          label: "ID Siswa",
-          type: "text",
-          required: true
-        },
-
-        {
-          key: "PAYMENT_DATE",
-          label: "Tanggal Pembayaran",
-          type: "date",
-          required: true
-        },
-
-        {
-          key: "AMOUNT",
-          label: "Jumlah Pembayaran",
-          type: "number",
-          required: true
-        },
-
-        {
-          key: "PAYMENT_METHOD",
-          label: "Metode Pembayaran",
-          type: "select",
-          required: true,
-          options: [
-            "CASH",
-            "TRANSFER",
-            "QRIS",
-            "LAINNYA"
-          ]
-        },
-
-        {
-          key: "REFERENCE_NO",
-          label: "No. Referensi",
-          type: "text",
-          required: false
-        },
-
-        {
-          key: "NOTES",
-          label: "Catatan",
-          type: "textarea",
-          required: false
-        }
-
+        { key: "BILLING_ID", label: "ID Tagihan", type: "text", required: true },
+        { key: "ID_SISWA", label: "ID Siswa", type: "text", required: true },
+        { key: "PAYMENT_DATE", label: "Tanggal Pembayaran", type: "date", required: true },
+        { key: "AMOUNT", label: "Jumlah Pembayaran", type: "number", required: true },
+        { key: "PAYMENT_METHOD", label: "Metode Pembayaran", type: "select", required: true, options: ["CASH", "TRANSFER", "QRIS", "LAINNYA"] },
+        { key: "REFERENCE_NO", label: "No. Referensi", type: "text", required: false },
+        { key: "NOTES", label: "Catatan", type: "textarea", required: false }
       ]
-
     },
 
-
     salary: {
-
       title: "Payroll Sensei",
-
       editTitle: "Edit Payroll",
-
       description: "Pilih sensei dan periode untuk melihat ringkasan gaji dari absensi.",
-
       idField: "SALARY_ID",
-
       fields: [
-        {
-          key: "ID_SENSEI",
-          label: "ID Sensei",
-          type: "text",
-          required: true
-        },
-
-        {
-          key: "PERIOD",
-          label: "Periode",
-          type: "month",
-          required: true
-        },
-
-        {
-          key: "BONUS",
-          label: "Bonus",
-          type: "number",
-          required: false
-        },
-
-        {
-          key: "DEDUCTION",
-          label: "Potongan",
-          type: "number",
-          required: false
-        },
-
-        {
-          key: "PAYMENT_DATE",
-          label: "Tanggal Pembayaran",
-          type: "date",
-          required: false
-        },
-
-        {
-          key: "PAYMENT_STATUS",
-          label: "Status Pembayaran",
-          type: "select",
-          required: true,
-          options: [
-            "PENDING",
-            "DIBAYAR",
-            "LUNAS"
-          ]
-        },
-
-        {
-          key: "NOTES",
-          label: "Catatan",
-          type: "textarea",
-          required: false
-        }
-
+        { key: "ID_SENSEI", label: "ID Sensei", type: "text", required: true },
+        { key: "PERIOD", label: "Periode", type: "month", required: true },
+        { key: "BONUS", label: "Bonus", type: "number", required: false },
+        { key: "DEDUCTION", label: "Potongan", type: "number", required: false },
+        { key: "PAYMENT_DATE", label: "Tanggal Pembayaran", type: "date", required: false },
+        { key: "PAYMENT_STATUS", label: "Status Pembayaran", type: "select", required: true, options: ["PENDING", "DIBAYAR", "LUNAS"] },
+        { key: "NOTES", label: "Catatan", type: "textarea", required: false }
       ]
-
     }
-
   };
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * UTILITIES
-   * =========================================================
-   */
+   * ========================================================= */
 
   function esc(value) {
-
     return String(value ?? "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
-
   }
-
 
   function formatNumber(value) {
-
     const number = Number(value || 0);
-
-    return new Intl.NumberFormat(
-      "id-ID"
-    ).format(
-      Number.isFinite(number)
-        ? number
-        : 0
-    );
-
+    return new Intl.NumberFormat("id-ID").format(Number.isFinite(number) ? number : 0);
   }
-
 
   function formatRupiah(value) {
-
     const number = Number(value || 0);
-
-    return new Intl.NumberFormat(
-      "id-ID",
-      {
-        style: "currency",
-        currency: "IDR",
-        maximumFractionDigits: 0
-      }
-    ).format(
-      Number.isFinite(number)
-        ? number
-        : 0
-    );
-
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0
+    }).format(Number.isFinite(number) ? number : 0);
   }
 
-
-  function renderError(
-    el,
-    error
-  ) {
-
-    console.error(
-      "ARIMA APP ERROR:",
-      error
-    );
-
+  function renderError(el, error) {
+    console.error("ARIMA APP ERROR:", error);
     el.innerHTML = `
-
       <div class="card">
-
-        <h3>
-          Terjadi kesalahan
-        </h3>
-
-        <p class="muted">
-          ${esc(
-            error?.message ||
-            error ||
-            "Terjadi kesalahan pada aplikasi."
-          )}
-        </p>
-
+        <h3>Terjadi kesalahan</h3>
+        <p class="muted">${esc(error?.message || error || "Terjadi kesalahan pada aplikasi.")}</p>
       </div>
-
     `;
-
   }
 
-
-  function showToast(
-    message,
-    type = "success"
-  ) {
-
-    let toast =
-      document.getElementById(
-        "arima-toast"
-      );
-
+  function showToast(message, type = "success") {
+    let toast = document.getElementById("arima-toast");
     if (!toast) {
-
-      toast =
-        document.createElement(
-          "div"
-        );
-
-      toast.id =
-        "arima-toast";
-
-      toast.style.position =
-        "fixed";
-
-      toast.style.right =
-        "24px";
-
-      toast.style.bottom =
-        "24px";
-
-      toast.style.zIndex =
-        "99999";
-
-      toast.style.padding =
-        "14px 18px";
-
-      toast.style.borderRadius =
-        "10px";
-
-      toast.style.boxShadow =
-        "0 10px 30px rgba(0,0,0,.18)";
-
-      toast.style.background =
-        "#111827";
-
-      toast.style.color =
-        "#fff";
-
-      toast.style.fontSize =
-        "14px";
-
-      document.body.appendChild(
-        toast
-      );
-
+      toast = document.createElement("div");
+      toast.id = "arima-toast";
+      toast.style.position = "fixed";
+      toast.style.right = "24px";
+      toast.style.bottom = "24px";
+      toast.style.zIndex = "99999";
+      toast.style.padding = "14px 18px";
+      toast.style.borderRadius = "10px";
+      toast.style.boxShadow = "0 10px 30px rgba(0,0,0,.18)";
+      toast.style.background = "#111827";
+      toast.style.color = "#fff";
+      toast.style.fontSize = "14px";
+      document.body.appendChild(toast);
     }
-
-    toast.textContent =
-      message;
-
-    toast.dataset.type =
-      type;
-
-    clearTimeout(
-      toast._timer
-    );
-
-    toast._timer =
-      setTimeout(() => {
-
-        toast.remove();
-
-      }, 3000);
-
+    toast.textContent = message;
+    toast.dataset.type = type;
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => { toast.remove(); }, 3000);
   }
 
-
-  function qs(
-    selector,
-    root = document
-  ) {
-
-    return root.querySelector(
-      selector
-    );
-
+  function qs(selector, root = document) {
+    return root.querySelector(selector);
   }
 
-
-  function qsa(
-    selector,
-    root = document
-  ) {
-
-    return Array.from(
-      root.querySelectorAll(
-        selector
-      )
-    );
-
+  function qsa(selector, root = document) {
+    return Array.from(root.querySelectorAll(selector));
   }
-
 
   function getAppRoot() {
-
-    return (
-      document.getElementById(
-        "app"
-      ) ||
-      document.getElementById(
-        "app-root"
-      ) ||
-      document.querySelector(
-        "main"
-      ) ||
-      document.body
-    );
-
+    return document.getElementById("app")
+      || document.getElementById("app-root")
+      || document.querySelector("main")
+      || document.body;
   }
-
 
   function getContentRoot() {
-
-    return (
-      document.getElementById(
-        "page-content"
-      ) ||
-      document.getElementById(
-        "content"
-      ) ||
-      document.getElementById(
-        "app-content"
-      ) ||
-      document.querySelector(
-        ".page-content"
-      ) ||
-      getAppRoot()
-    );
-
+    return document.getElementById("page-content")
+      || document.getElementById("content")
+      || document.getElementById("app-content")
+      || document.querySelector(".page-content")
+      || getAppRoot();
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * AUTH
-   * =========================================================
-   */
+   * ========================================================= */
 
   function getStoredUser() {
-
     try {
-
-      // Prefer the shared Auth module.
-      if (
-        window.Auth &&
-        typeof window.Auth.current === "function"
-      ) {
-
-        const current =
-          window.Auth.current();
-
-        if (current) {
-          return current;
-        }
-
+      if (window.Auth && typeof window.Auth.current === "function") {
+        const current = window.Auth.current();
+        if (current) return current;
       }
-
-      // Fallback for compatibility with older builds.
-      const keys = [
-        "arima_session",
-        "ARIMA_USER",
-        "ARIMA_SESSION"
-      ];
-
+      const keys = ["arima_session", "ARIMA_USER", "ARIMA_SESSION"];
       for (const key of keys) {
-
-        const raw =
-          localStorage.getItem(key);
-
-        if (!raw) {
-          continue;
-        }
-
-        const parsed =
-          JSON.parse(raw);
-
-        if (parsed && typeof parsed === "object") {
-          return parsed;
-        }
-
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") return parsed;
       }
-
       return null;
-
     } catch (error) {
-
-      console.warn(
-        "Gagal membaca user/session:",
-        error
-      );
-
+      console.warn("Gagal membaca user/session:", error);
       return null;
-
     }
-
   }
 
-
   function requireAuth() {
-
-    const currentUser =
-      getStoredUser();
-
+    const currentUser = getStoredUser();
     if (!currentUser) {
-
-      console.warn(
-        "ARIMA: session tidak ditemukan. Mengarahkan ke login."
-      );
-
-      window.location.replace(
-        "login.html"
-      );
-
+      console.warn("ARIMA: session tidak ditemukan. Mengarahkan ke login.");
+      window.location.replace("login.html");
       return null;
-
     }
-
-    user =
-      currentUser;
-
-    // Keep both session keys synchronized so an old cached
-    // page cannot accidentally log the user out.
+    user = currentUser;
     try {
-
-      const value =
-        JSON.stringify(
-          currentUser
-        );
-
-      localStorage.setItem(
-        "arima_session",
-        value
-      );
-
-      localStorage.setItem(
-        "ARIMA_USER",
-        value
-      );
-
+      const value = JSON.stringify(currentUser);
+      localStorage.setItem("arima_session", value);
+      localStorage.setItem("ARIMA_USER", value);
     } catch (error) {
-
-      console.warn(
-        "Gagal menyinkronkan session:",
-        error
-      );
-
+      console.warn("Gagal menyinkronkan session:", error);
     }
-
     return currentUser;
-
   }
 
   function isAdminUser() {
-    return String(user?.role || user?.ROLE || "")
-      .trim()
-      .toUpperCase() === "ADMIN";
+    return String(user?.role || user?.ROLE || "").trim().toUpperCase() === "ADMIN";
   }
-
 
   function logout() {
-
     try {
-
-      if (
-        window.Auth &&
-        typeof window.Auth.logout === "function"
-      ) {
-
+      if (window.Auth && typeof window.Auth.logout === "function") {
         window.Auth.logout();
         return;
-
       }
-
-      localStorage.removeItem(
-        "arima_session"
-      );
-
-      localStorage.removeItem(
-        "ARIMA_USER"
-      );
-
-      localStorage.removeItem(
-        "ARIMA_SESSION"
-      );
-
-      localStorage.removeItem(
-        "ARIMA_TOKEN"
-      );
-
-      sessionStorage.removeItem(
-        "ARIMA_TOKEN"
-      );
-
+      localStorage.removeItem("arima_session");
+      localStorage.removeItem("ARIMA_USER");
+      localStorage.removeItem("ARIMA_SESSION");
+      localStorage.removeItem("ARIMA_TOKEN");
+      sessionStorage.removeItem("ARIMA_TOKEN");
     } catch (error) {
-
-      console.warn(
-        "Logout error:",
-        error
-      );
-
+      console.warn("Logout error:", error);
     }
-
-    window.location.replace(
-      "login.html"
-    );
-
+    window.location.replace("login.html");
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * LAYOUT
-   * =========================================================
-   */
+   * ========================================================= */
 
   function renderLayout() {
+    const root = getAppRoot();
+    if (!root) return;
 
-    const root =
-      getAppRoot();
-
-    if (!root) {
-      return;
-    }
-
-    const adminMenus = ["attendance", "billing", "finance", "salary", "reports", "settings"];
-    const visibleMenus = menus.filter(
-      menu => !adminMenus.includes(menu[0]) || isAdminUser()
-    );
+    const adminMenus = ["students", "sensei", "attendance", "billing", "receipts", "finance", "salary", "reports", "settings"];
+    const visibleMenus = menus.filter(menu => !adminMenus.includes(menu[0]) || isAdminUser());
 
     root.innerHTML = `
-
       <div class="arima-layout">
-
-        <aside
-          class="sidebar"
-          id="arima-sidebar"
-        >
-
+        <aside class="sidebar" id="arima-sidebar">
           <div class="sidebar-brand">
-
             <div class="sidebar-logo">
               <img src="assets/logo.webp" alt="Logo LPKS Arima Persada">
             </div>
-
             <div class="brand-copy">
-            <div class="brand-title">
-              ARIMA
+              <div class="brand-title">ARIMA</div>
+              <div class="brand-subtitle">MANAGEMENT SYSTEM</div>
             </div>
-
-            <div class="brand-subtitle">
-              MANAGEMENT SYSTEM
-            </div>
-            </div>
-
           </div>
 
-
-          <nav
-            class="sidebar-nav"
-            id="arima-menu"
-          >
-
-            ${visibleMenus.map(
-              menu => `
-
-                <button
-                  type="button"
-                  class="nav-item"
-                  data-page="${esc(menu[0])}"
-                >
-
-                  <span class="nav-icon">
-                    ${menu[2]}
-                  </span>
-
-                  <span>
-                    ${esc(menu[1])}
-                  </span>
-
-                </button>
-
-              `
-            ).join("")}
-
+          <nav class="sidebar-nav" id="arima-menu">
+            ${visibleMenus.map(menu => `
+              <button type="button" class="nav-item" data-page="${esc(menu[0])}">
+                <span class="nav-icon">${menu[2]}</span>
+                <span>${esc(menu[1])}</span>
+              </button>
+            `).join("")}
           </nav>
 
-
           <div class="sidebar-footer">
-
-            <a
-              class="nav-item nav-link"
-              href="attendance.html"
-            >
-
+            <a class="nav-item nav-link" href="attendance.html">
               <span class="nav-icon">✓</span>
               <span>Absensi Siswa / Sensei</span>
-
             </a>
-
-            <button
-              type="button"
-              id="btn-logout"
-              class="nav-item logout-button"
-            >
-
-              <span class="nav-icon">
-                ⇥
-              </span>
-
-              <span>
-                Keluar
-              </span>
-
+            <button type="button" id="btn-logout" class="nav-item logout-button">
+              <span class="nav-icon">⇥</span>
+              <span>Keluar</span>
             </button>
-
           </div>
-
         </aside>
 
-
-        <section
-          class="main-area"
-        >
-
-          <header
-            class="topbar"
-          >
-
+        <section class="main-area">
+          <header class="topbar">
             <div>
-
-              <button
-                type="button"
-                id="btn-sidebar"
-                class="icon-button"
-                aria-label="Menu"
-              >
-                ☰
-              </button>
-
+              <button type="button" id="btn-sidebar" class="icon-button" aria-label="Menu">☰</button>
             </div>
-
-
-            <div
-              class="topbar-user"
-            >
-
-              <span
-                id="topbar-user-name"
-              >
-                ${esc(
-                  user?.name ||
-                  user?.NAME ||
-                  ""
-                )}
-              </span>
-
+            <div class="topbar-user">
+              <span id="topbar-user-name">${esc(user?.name || user?.NAME || "")}</span>
             </div>
-
           </header>
 
-
-          <main
-            id="page-content"
-            class="page-content"
-          >
-
-            <div class="card">
-              Memuat aplikasi...
-            </div>
-
+          <main id="page-content" class="page-content">
+            <div class="card">Memuat aplikasi...</div>
           </main>
-
         </section>
-
       </div>
-
     `;
 
-
-    const menu =
-      qs(
-        "#arima-menu"
-      );
-
+    const menu = qs("#arima-menu");
     if (menu) {
-
-      menu.addEventListener(
-        "click",
-        event => {
-
-          const button =
-            event.target.closest(
-              "[data-page]"
-            );
-
-          if (!button) {
-            return;
-          }
-
-          const page =
-            button.dataset.page;
-
-          load(page);
-
-        }
-      );
-
+      menu.addEventListener("click", event => {
+        const button = event.target.closest("[data-page]");
+        if (!button) return;
+        load(button.dataset.page);
+      });
     }
 
+    qs("#btn-logout")?.addEventListener("click", logout);
 
-    const logoutButton =
-      qs(
-        "#btn-logout"
-      );
-
-    if (logoutButton) {
-
-      logoutButton.addEventListener(
-        "click",
-        logout
-      );
-
-    }
-
-
-    const sidebarButton =
-      qs(
-        "#btn-sidebar"
-      );
-
-    if (sidebarButton) {
-
-      sidebarButton.addEventListener(
-        "click",
-        () => {
-
-          const sidebar =
-            qs(
-              "#arima-sidebar"
-            );
-
-          if (sidebar) {
-
-            sidebar.classList.toggle(
-              "collapsed"
-            );
-
-          }
-
-        }
-      );
-
-    }
-
+    qs("#btn-sidebar")?.addEventListener("click", () => {
+      qs("#arima-sidebar")?.classList.toggle("collapsed");
+    });
   }
 
-
-  function setActiveMenu(
-    page
-  ) {
-
-    qsa(
-      "[data-page]"
-    ).forEach(
-      button => {
-
-        button.classList.toggle(
-          "active",
-          button.dataset.page === page
-        );
-
-      }
-    );
-
+  function setActiveMenu(page) {
+    qsa("[data-page]").forEach(button => {
+      button.classList.toggle("active", button.dataset.page === page);
+    });
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * PAGE LOAD
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function load(
-    page
-  ) {
+  async function load(page) {
+    const el = getContentRoot();
+    if (!el) return;
 
-    const el =
-      getContentRoot();
+    setActiveMenu(page);
+    el.innerHTML = `<div class="card"><div class="muted">Memuat...</div></div>`;
 
-    if (!el) {
+    try {
+      switch (String(page || "").toLowerCase()) {
+        case "dashboard": await renderDashboard(el); break;
+        case "students": await renderStudents(el); break;
+        case "sensei": await renderSensei(el); break;
+        case "attendance": await renderAttendance(el); break;
+        case "billing": await renderBilling(el); break;
+        case "receipts": await renderReceipts(el); break;
+        case "finance": await renderFinance(el); break;
+        case "salary": await renderSalary(el); break;
+        case "reports": await renderReports(el); break;
+        case "settings": await renderSettings(el); break;
+        default: await renderDashboard(el); break;
+      }
+    } catch (error) {
+      renderError(el, error);
+    }
+  }
+
+  /* =========================================================
+   * KUITANSI (RECEIPTS)
+   * ========================================================= */
+
+  async function renderReceipts(el) {
+    if (!isAdminUser()) {
+      el.innerHTML = `<div class="card"><h2>Akses Ditolak</h2><p class="muted">Kuitansi hanya dapat dibuka oleh admin.</p></div>`;
       return;
     }
 
-    setActiveMenu(
-      page
+    const [paymentResponse, studentsResponse] = await Promise.all([API.payments(), API.students()]);
+    if (paymentResponse?.success === false) throw new Error(paymentResponse.message || "Data pembayaran gagal dimuat.");
+    if (studentsResponse?.success === false) throw new Error(studentsResponse.message || "Data siswa gagal dimuat.");
+
+    const students = new Map(
+      (Array.isArray(studentsResponse?.data) ? studentsResponse.data : [])
+        .map(row => [String(row.ID_SISWA || "").trim(), row])
     );
+    const payments = (Array.isArray(paymentResponse?.data) ? paymentResponse.data : [])
+      .slice()
+      .sort((a, b) => String(b.PAYMENT_DATE || "").localeCompare(String(a.PAYMENT_DATE || "")));
+
+    const dateText = value => {
+      const text = String(value || "");
+      return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : text;
+    };
+    const nameOf = row => students.get(String(row.ID_SISWA || "").trim())?.NAMA || "-";
 
     el.innerHTML = `
-
-      <div class="card">
-
-        <div class="muted">
-          Memuat...
+      ${pageHeader("Kuitansi", "Cetak bukti pembayaran siswa dari data pembayaran yang sudah tercatat.")}
+      <div class="report-toolbar">
+        <div>
+          <label for="receipt-search">Cari pembayaran</label>
+          <input id="receipt-search" type="search" placeholder="ID siswa, nama, atau no. pembayaran" autocomplete="off">
         </div>
-
       </div>
-
+      <div id="receipt-list"></div>
     `;
 
+    const listRoot = qs("#receipt-list", el);
 
-    try {
-
-      switch (
-        String(page || "")
-          .toLowerCase()
-      ) {
-
-        case "dashboard":
-
-          await renderDashboard(
-            el
-          );
-
-          break;
-
-
-        case "students":
-
-          await renderStudents(
-            el
-          );
-
-          break;
-
-
-        case "sensei":
-
-          await renderSensei(
-            el
-          );
-
-          break;
-
-
-        case "attendance":
-
-          await renderAttendance(
-            el
-          );
-
-          break;
-
-
-        case "billing":
-
-          await renderBilling(
-            el
-          );
-
-          break;
-
-
-        case "finance":
-
-          await renderFinance(
-            el
-          );
-
-          break;
-
-
-        case "salary":
-
-          await renderSalary(
-            el
-          );
-
-          break;
-
-
-        case "reports":
-
-          await renderReports(
-            el
-          );
-
-          break;
-
-
-        case "settings":
-
-          await renderSettings(
-            el
-          );
-
-          break;
-
-
-        default:
-
-          await renderDashboard(
-            el
-          );
-
-          break;
-
+    function draw(filter = "") {
+      const keyword = filter.trim().toLowerCase();
+      const rows = payments.filter(row => !keyword || [row.PAYMENT_ID, row.ID_SISWA, nameOf(row), row.BILLING_ID]
+        .some(value => String(value || "").toLowerCase().includes(keyword)));
+      if (!rows.length) {
+        listRoot.innerHTML = `<div class="card"><div class="muted">${payments.length ? "Tidak ada pembayaran yang cocok." : "Belum ada data pembayaran."}</div></div>`;
+        return;
       }
-
-    } catch (error) {
-
-      renderError(
-        el,
-        error
-      );
-
+      listRoot.innerHTML = `
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Tanggal</th><th>No. Pembayaran</th><th>ID Siswa</th><th>Nama</th><th>Jumlah</th><th>Metode</th><th></th></tr></thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  <td>${esc(dateText(row.PAYMENT_DATE))}</td>
+                  <td>${esc(row.PAYMENT_ID)}</td>
+                  <td>${esc(row.ID_SISWA)}</td>
+                  <td>${esc(nameOf(row))}</td>
+                  <td class="receipt-amount">${esc(formatRupiah(row.AMOUNT))}</td>
+                  <td>${esc(row.PAYMENT_METHOD || "-")}</td>
+                  <td><div class="receipt-actions">
+                    <button type="button" class="btn btn-primary" data-receipt-pdf="${esc(row.PAYMENT_ID)}">Cetak PDF</button>
+                    <button type="button" class="btn btn-light" data-receipt-wa="${esc(row.PAYMENT_ID)}">WhatsApp</button>
+                    <button type="button" class="btn btn-danger" data-receipt-delete="${esc(row.PAYMENT_ID)}">Hapus</button>
+                  </div></td>
+                </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>`;
     }
 
+    draw();
+    qs("#receipt-search", el).addEventListener("input", event => draw(event.target.value));
+
+    async function downloadReceipt(payment) {
+      const student = students.get(String(payment.ID_SISWA || "").trim()) || {};
+      const { pdf, fileName } = await window.ArimaPdf.buildReceipt(payment, student);
+      pdf.save(fileName);
+    }
+
+    function sendWhatsApp(payment) {
+      const student = students.get(String(payment.ID_SISWA || "").trim()) || {};
+      let phone = String(student.NO_WA || "").replace(/\D/g, "");
+      if (!phone) throw new Error("Nomor WhatsApp siswa belum tersedia.");
+      if (phone.startsWith("0")) phone = `62${phone.slice(1)}`;
+      else if (!phone.startsWith("62")) phone = `62${phone}`;
+      const message = [
+        "LPKS Arima Persada - Kuitansi Pembayaran",
+        `No. Pembayaran: ${payment.PAYMENT_ID || "-"}`,
+        `Nama: ${student.NAMA || "-"}`,
+        `Tanggal: ${dateText(payment.PAYMENT_DATE) || "-"}`,
+        `Jumlah: ${formatRupiah(payment.AMOUNT)}`,
+        `Metode: ${payment.PAYMENT_METHOD || "-"}`,
+        "Terima kasih. Pembayaran Anda telah kami terima."
+      ].join("\n");
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+    }
+
+    listRoot.addEventListener("click", async event => {
+      const pdfButton = event.target.closest("[data-receipt-pdf]");
+      const waButton = event.target.closest("[data-receipt-wa]");
+      const delButton = event.target.closest("[data-receipt-delete]");
+      const button = pdfButton || waButton || delButton;
+      if (!button) return;
+      const id = button.dataset.receiptPdf || button.dataset.receiptWa || button.dataset.receiptDelete;
+      const payment = payments.find(row => String(row.PAYMENT_ID) === id);
+      if (!payment) return;
+      try {
+        if (delButton) {
+          if (!confirm("Hapus pembayaran ini? Mutasi keuangan terkait juga akan dihapus.")) return;
+          button.disabled = true;
+          const res = await API.deleteRecord("payments", { PAYMENT_ID: id, __ROW_NUMBER: payment.__ROW_NUMBER });
+          if (res?.success === false) throw new Error(res.message || "Gagal menghapus.");
+          showToast(res?.message || "Pembayaran berhasil dihapus.");
+          await renderReceipts(el);
+        } else if (pdfButton) {
+          button.disabled = true;
+          await downloadReceipt(payment);
+        } else {
+          sendWhatsApp(payment);
+        }
+      } catch (error) {
+        showToast(error.message || "Aksi gagal.", "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * DASHBOARD
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function renderDashboard(
-    el
-  ) {
-
+  async function renderDashboard(el) {
     try {
-
-      const response =
-        await API.dashboard();
-
-      const data =
-        response?.data || {};
-
+      const response = await API.dashboard();
+      const data = response?.data || {};
 
       el.innerHTML = `
-
         <div class="page-title">
-
           <div>
-
-            <h1>
-              Dashboard
-            </h1>
-
-            <p>
-              Ringkasan operasional
-              LPKS Arima Persada.
-            </p>
-
+            <h1>Dashboard</h1>
+            <p>Ringkasan operasional LPKS Arima Persada.</p>
           </div>
-
         </div>
-
 
         <div class="cards">
-
-          <div class="card">
-
-            <div class="muted">
-              Siswa Aktif
-            </div>
-
-            <div class="metric">
-              ${formatNumber(
-                data.students
-              )}
-            </div>
-
-          </div>
-
-
-          <div class="card">
-
-            <div class="muted">
-              Sensei Aktif
-            </div>
-
-            <div class="metric">
-              ${formatNumber(
-                data.sensei
-              )}
-            </div>
-
-          </div>
-
-
-          <div class="card">
-
-            <div class="muted">
-              Kehadiran
-            </div>
-
-            <div class="metric">
-              ${formatNumber(
-                data.attendance
-              )}%
-            </div>
-
-          </div>
-
-
-          <div class="card">
-
-            <div class="muted">
-              Tagihan Pending
-            </div>
-
-            <div class="metric">
-              ${formatNumber(
-                data.pendingBilling
-              )}
-            </div>
-
-          </div>
-
+          <div class="card"><div class="muted">Siswa Aktif</div><div class="metric">${formatNumber(data.students)}</div></div>
+          <div class="card"><div class="muted">Sensei Aktif</div><div class="metric">${formatNumber(data.sensei)}</div></div>
+          <div class="card"><div class="muted">Kehadiran</div><div class="metric">${formatNumber(data.attendance)}%</div></div>
+          <div class="card"><div class="muted">Tagihan Pending</div><div class="metric">${formatNumber(data.pendingBilling)}</div></div>
         </div>
-
 
         <div class="section">
-
           <div class="card">
-
-            <strong>
-              Selamat datang,
-              ${esc(
-                user?.name ||
-                user?.NAME ||
-                "User"
-              )}
-            </strong>
-
-            <p class="muted">
-              Gunakan menu di sebelah kiri
-              untuk mengelola sistem.
-            </p>
-
+            <strong>Selamat datang, ${esc(user?.name || user?.NAME || "User")}</strong>
+            <p class="muted">Gunakan menu di sebelah kiri untuk mengelola sistem.</p>
           </div>
-
         </div>
-
       `;
-
     } catch (error) {
-
-      renderError(
-        el,
-        error
-      );
-
+      renderError(el, error);
     }
-
   }
-  /*
-   * =========================================================
+
+  /* =========================================================
    * GENERIC TABLE
-   * =========================================================
-   */
+   * ========================================================= */
 
-  function renderTable(
-    rows,
-    columns,
-    options = {}
-  ) {
-
-    const data =
-      Array.isArray(rows)
-        ? rows
-        : [];
-
-    const emptyText =
-      options.emptyText ||
-      "Belum ada data.";
+  function renderTable(rows, columns, options = {}) {
+    const data = Array.isArray(rows) ? rows : [];
+    const emptyText = options.emptyText || "Belum ada data.";
 
     if (!data.length) {
-
-      return `
-
-        <div class="card">
-
-          <div class="muted">
-            ${esc(emptyText)}
-          </div>
-
-        </div>
-
-      `;
-
+      return `<div class="card"><div class="muted">${esc(emptyText)}</div></div>`;
     }
 
-
     return `
-
       <div class="table-wrap">
-
         <table class="data-table">
-
           <thead>
-
             <tr>
-
-              ${columns.map(
-                column => `
-
-                  <th>
-                    ${esc(
-                      column.label ||
-                      column.key
-                    )}
-                  </th>
-
-                `
-              ).join("")}
-
-              ${
-                options.actions
-                  ? "<th>Aksi</th>"
-                  : ""
-              }
-
+              ${columns.map(column => `<th>${esc(column.label || column.key)}</th>`).join("")}
+              ${options.actions ? "<th>Aksi</th>" : ""}
             </tr>
-
           </thead>
-
-
           <tbody>
-
-            ${data.map(
-              (row, index) => `
-
-                <tr>
-
-                  ${columns.map(
-                    column => {
-
-                      let value =
-                        row[
-                          column.key
-                        ];
-
-                      if (
-                        typeof column.render ===
-                        "function"
-                      ) {
-
-                        value =
-                          column.render(
-                            value,
-                            row,
-                            index
-                          );
-
-                      }
-
-                      return `
-
-                        <td>
-                          ${
-                            value === null ||
-                            value === undefined
-                              ? ""
-                              : value
-                          }
-                        </td>
-
-                      `;
-
-                    }
-                  ).join("")}
-
-
-                  ${
-                    options.actions
-                      ? `
-
-                        <td>
-
-                          <div
-                            class="table-actions"
-                          >
-
-                            ${
-                              options.actions(
-                                row,
-                                index
-                              )
-                            }
-
-                          </div>
-
-                        </td>
-
-                      `
-                      : ""
-                  }
-
-                </tr>
-
-              `
-            ).join("")}
-
+            ${data.map((row, index) => `
+              <tr>
+                ${columns.map(column => {
+                  let value = row[column.key];
+                  if (typeof column.render === "function") value = column.render(value, row, index);
+                  return `<td>${value === null || value === undefined ? "" : value}</td>`;
+                }).join("")}
+                ${options.actions ? `<td><div class="table-actions">${options.actions(row, index)}</div></td>` : ""}
+              </tr>
+            `).join("")}
           </tbody>
-
         </table>
-
       </div>
-
     `;
-
   }
 
-
-  /*
-   * =========================================================
-   * PAGE HEADER
-   * =========================================================
-   */
-
-  function pageHeader(
-    title,
-    description,
-    buttonText = "",
-    buttonId = ""
-  ) {
-
+  function pageHeader(title, description, buttonText = "", buttonId = "") {
     return `
-
       <div class="page-title">
-
         <div>
-
-          <h1>
-            ${esc(title)}
-          </h1>
-
-          ${
-            description
-              ? `
-
-                <p>
-                  ${esc(description)}
-                </p>
-
-              `
-              : ""
-          }
-
+          <h1>${esc(title)}</h1>
+          ${description ? `<p>${esc(description)}</p>` : ""}
         </div>
-
-
-        ${
-          buttonText
-            ? `
-
-              <button
-                type="button"
-                class="btn btn-primary"
-                id="${esc(buttonId)}"
-              >
-
-                + ${esc(buttonText)}
-
-              </button>
-
-            `
-            : ""
-        }
-
+        ${buttonText ? `<button type="button" class="btn btn-primary" id="${esc(buttonId)}">+ ${esc(buttonText)}</button>` : ""}
       </div>
-
     `;
-
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * STUDENTS
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function renderStudents(
-    el
-  ) {
-
+  async function renderStudents(el) {
     try {
-
-      const response =
-        await API.students();
-
-      const rows =
-        response?.data || [];
-
+      const response = await API.students();
+      const rows = response?.data || [];
 
       el.innerHTML = `
-
-        ${pageHeader(
-          "Data Siswa",
-          "Kelola data siswa LPKS Arima Persada.",
-          "Tambah Siswa",
-          "btn-add-student"
-        )}
-
-
+        ${pageHeader("Data Siswa", "Kelola data siswa LPKS Arima Persada.", "Tambah Siswa", "btn-add-student")}
         <div class="card">
-
-          ${renderTable(
-            rows,
-            [
-              {
-                key: "ID_SISWA",
-                label: "ID"
-              },
-
-              {
-                key: "NAMA",
-                label: "Nama"
-              },
-
-              {
-                key: "NIK",
-                label: "NIK"
-              },
-
-              {
-                key: "NO_WA",
-                label: "WhatsApp"
-              },
-
-              {
-                key: "PROGRAM",
-                label: "Program"
-              },
-
-              {
-                key: "ASRAMA",
-                label: "Asrama"
-              },
-
-              {
-                key: "STATUS",
-                label: "Status"
-              }
-            ],
-            {
-              actions: row => `
-
-                <button
-                  type="button"
-                  class="btn btn-small"
-                  data-edit-student="${esc(
-                    row.ID_SISWA
-                  )}"
-                  data-row-number="${esc(row.__ROW_NUMBER || '')}"
-                >
-                  Edit
-                </button>
-
-                <button
-                  type="button"
-                  class="btn btn-small btn-danger"
-                  data-delete-student="${esc(
-                    row.ID_SISWA
-                  )}"
-                  data-row-number="${esc(row.__ROW_NUMBER || '')}"
-                >
-                  Hapus
-                </button>
-
-              `
-            }
-          )}
-
+          ${renderTable(rows, [
+            { key: "ID_SISWA", label: "ID" },
+            { key: "NAMA", label: "Nama" },
+            { key: "NIK", label: "NIK" },
+            { key: "NO_WA", label: "WhatsApp" },
+            { key: "PROGRAM", label: "Program" },
+            { key: "ASRAMA", label: "Asrama" },
+            { key: "STATUS", label: "Status" }
+          ], {
+            actions: row => `
+              <button type="button" class="btn btn-small" data-edit-student="${esc(row.ID_SISWA)}" data-row-number="${esc(row.__ROW_NUMBER || '')}">Edit</button>
+              <button type="button" class="btn btn-small btn-danger" data-delete-student="${esc(row.ID_SISWA)}" data-row-number="${esc(row.__ROW_NUMBER || '')}">Hapus</button>
+            `
+          })}
         </div>
-
       `;
 
+      qs("#btn-add-student")?.addEventListener("click", () => openFormModal("students"));
 
-      const addButton =
-        qs(
-          "#btn-add-student"
-        );
+      qsa("[data-edit-student]").forEach(button => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.editStudent;
+          const rowNumber = button.dataset.rowNumber;
+          const row = rows.find(item => rowNumber && String(item.__ROW_NUMBER) === String(rowNumber))
+            || rows.find(item => String(item.ID_SISWA) === String(id));
+          if (row) openFormModal("students", row);
+        });
+      });
 
-      if (addButton) {
-
-        addButton.addEventListener(
-          "click",
-          () => {
-
-            openFormModal(
-              "students"
-            );
-
+      qsa("[data-delete-student]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const id = button.dataset.deleteStudent;
+          if (!confirm("Hapus data siswa ini?")) return;
+          try {
+            const response = await API.delete("students", { ID_SISWA: id, __ROW_NUMBER: button.dataset.rowNumber });
+            if (response?.success === false) throw new Error(response.message || "Gagal menghapus data siswa.");
+            showToast("Data siswa berhasil dihapus.");
+            await renderStudents(el);
+          } catch (error) {
+            showToast(error.message || "Gagal menghapus data.", "error");
           }
-        );
-
-      }
-
-
-      qsa(
-        "[data-edit-student]"
-      ).forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              const id =
-                button.dataset
-                  .editStudent;
-              const rowNumber = button.dataset.rowNumber;
-
-              const row =
-                rows.find(
-                  item => rowNumber &&
-                    String(item.__ROW_NUMBER) === String(rowNumber)
-                ) || rows.find(
-                  item =>
-                    String(
-                      item.ID_SISWA
-                    ) === String(id)
-                );
-
-              if (row) {
-
-                openFormModal(
-                  "students",
-                  row
-                );
-
-              }
-
-            }
-          );
-
-        }
-      );
-
-
-      qsa(
-        "[data-delete-student]"
-      ).forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            async () => {
-
-              const id =
-                button.dataset
-                  .deleteStudent;
-
-              if (
-                !confirm(
-                  "Hapus data siswa ini?"
-                )
-              ) {
-                return;
-              }
-
-              try {
-
-                const response = await API.delete(
-                  "students",
-                  {
-                    ID_SISWA: id,
-                    __ROW_NUMBER: button.dataset.rowNumber
-                  }
-                );
-                if (response?.success === false) {
-                  throw new Error(response.message || "Gagal menghapus data siswa.");
-                }
-
-                showToast(
-                  "Data siswa berhasil dihapus."
-                );
-
-                await renderStudents(
-                  el
-                );
-
-              } catch (error) {
-
-                showToast(
-                  error.message ||
-                  "Gagal menghapus data.",
-                  "error"
-                );
-
-              }
-
-            }
-          );
-
-        }
-      );
-
+        });
+      });
     } catch (error) {
-
-      renderError(
-        el,
-        error
-      );
-
+      renderError(el, error);
     }
-
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * SENSEI
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function renderSensei(
-    el
-  ) {
-
+  async function renderSensei(el) {
     try {
-
-      const response =
-        await API.sensei();
-
-      const rows =
-        response?.data || [];
+      const response = await API.sensei();
+      const rows = response?.data || [];
 
       const columns = [
         { key: "ID_SENSEI", label: "ID" },
@@ -2023,213 +691,61 @@ window.App = (() => {
         { key: "STATUS", label: "Status" }
       ];
       if (isAdminUser()) {
-        columns.splice(4, 0, {
-          key: "TARIF_PER_JAM",
-          label: "Tarif / JP (45 menit)",
-          render: value => formatRupiah(value)
-        });
+        columns.splice(4, 0, { key: "TARIF_PER_JAM", label: "Tarif / JP (45 menit)", render: value => formatRupiah(value) });
       }
-
 
       el.innerHTML = `
-
-        ${pageHeader(
-          "Data Sensei",
-          "Kelola data pengajar LPKS Arima Persada.",
-          "Tambah Sensei",
-          "btn-add-sensei"
-        )}
-
-
+        ${pageHeader("Data Sensei", "Kelola data pengajar LPKS Arima Persada.", "Tambah Sensei", "btn-add-sensei")}
         <div class="card">
-
-          ${renderTable(
-            rows,
-            columns,
-            {
-              actions: row => `
-
-                <button
-                  type="button"
-                  class="btn btn-small"
-                  data-edit-sensei="${esc(
-                    row.ID_SENSEI
-                  )}"
-                  data-row-number="${esc(row.__ROW_NUMBER || '')}"
-                >
-                  Edit
-                </button>
-
-                <button
-                  type="button"
-                  class="btn btn-small btn-danger"
-                  data-delete-sensei="${esc(
-                    row.ID_SENSEI
-                  )}"
-                  data-row-number="${esc(row.__ROW_NUMBER || '')}"
-                >
-                  Hapus
-                </button>
-
-              `
-            }
-          )}
-
+          ${renderTable(rows, columns, {
+            actions: row => `
+              <button type="button" class="btn btn-small" data-edit-sensei="${esc(row.ID_SENSEI)}" data-row-number="${esc(row.__ROW_NUMBER || '')}">Edit</button>
+              <button type="button" class="btn btn-small btn-danger" data-delete-sensei="${esc(row.ID_SENSEI)}" data-row-number="${esc(row.__ROW_NUMBER || '')}">Hapus</button>
+            `
+          })}
         </div>
-
       `;
 
+      qs("#btn-add-sensei")?.addEventListener("click", () => openFormModal("sensei"));
 
-      const addButton =
-        qs(
-          "#btn-add-sensei"
-        );
+      qsa("[data-edit-sensei]").forEach(button => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.editSensei;
+          const rowNumber = button.dataset.rowNumber;
+          const row = rows.find(item => rowNumber && String(item.__ROW_NUMBER) === String(rowNumber))
+            || rows.find(item => String(item.ID_SENSEI) === String(id));
+          if (row) openFormModal("sensei", row);
+        });
+      });
 
-      if (addButton) {
-
-        addButton.addEventListener(
-          "click",
-          () => {
-
-            openFormModal(
-              "sensei"
-            );
-
+      qsa("[data-delete-sensei]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const id = button.dataset.deleteSensei;
+          if (!confirm("Hapus data sensei ini?")) return;
+          try {
+            const response = await API.delete("sensei", { ID_SENSEI: id, __ROW_NUMBER: button.dataset.rowNumber });
+            if (response?.success === false) throw new Error(response.message || "Gagal menghapus data sensei.");
+            showToast("Data sensei berhasil dihapus.");
+            await renderSensei(el);
+          } catch (error) {
+            showToast(error.message || "Gagal menghapus data.", "error");
           }
-        );
-
-      }
-
-
-      qsa(
-        "[data-edit-sensei]"
-      ).forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              const id =
-                button.dataset
-                  .editSensei;
-              const rowNumber = button.dataset.rowNumber;
-
-              const row =
-                rows.find(
-                  item => rowNumber &&
-                    String(item.__ROW_NUMBER) === String(rowNumber)
-                ) || rows.find(
-                  item =>
-                    String(
-                      item.ID_SENSEI
-                    ) === String(id)
-                );
-
-              if (row) {
-
-                openFormModal(
-                  "sensei",
-                  row
-                );
-
-              }
-
-            }
-          );
-
-        }
-      );
-
-
-      qsa(
-        "[data-delete-sensei]"
-      ).forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            async () => {
-
-              const id =
-                button.dataset
-                  .deleteSensei;
-
-              if (
-                !confirm(
-                  "Hapus data sensei ini?"
-                )
-              ) {
-                return;
-              }
-
-              try {
-
-                const response = await API.delete(
-                  "sensei",
-                  {
-                    ID_SENSEI: id,
-                    __ROW_NUMBER: button.dataset.rowNumber
-                  }
-                );
-                if (response?.success === false) {
-                  throw new Error(response.message || "Gagal menghapus data sensei.");
-                }
-
-                showToast(
-                  "Data sensei berhasil dihapus."
-                );
-
-                await renderSensei(
-                  el
-                );
-
-              } catch (error) {
-
-                showToast(
-                  error.message ||
-                  "Gagal menghapus data.",
-                  "error"
-                );
-
-              }
-
-            }
-          );
-
-        }
-      );
-
+        });
+      });
     } catch (error) {
-
-      renderError(
-        el,
-        error
-      );
-
+      renderError(el, error);
     }
-
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * ATTENDANCE
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function renderAttendance(
-    el
-  ) {
-
+  async function renderAttendance(el) {
     try {
-
-      const [attendanceResponse, studentsResponse, senseiResponse] =
-        await Promise.all([
-          API.attendance(),
-          API.students(),
-          API.sensei()
-        ]);
+      const [attendanceResponse, studentsResponse, senseiResponse] = await Promise.all([
+        API.attendance(), API.students(), API.sensei()
+      ]);
 
       [attendanceResponse, studentsResponse, senseiResponse].forEach((response, index) => {
         if (response?.success === false) {
@@ -2237,15 +753,11 @@ window.App = (() => {
           throw new Error((response.message || `Data ${labels[index]} gagal dimuat.`));
         }
       });
-      const rows = Array.isArray(attendanceResponse?.data)
-        ? attendanceResponse.data
-        : [];
-      const students = Array.isArray(studentsResponse?.data)
-        ? studentsResponse.data
-        : [];
-      const sensei = Array.isArray(senseiResponse?.data)
-        ? senseiResponse.data
-        : [];
+
+      const rows = Array.isArray(attendanceResponse?.data) ? attendanceResponse.data : [];
+      const students = Array.isArray(studentsResponse?.data) ? studentsResponse.data : [];
+      const sensei = Array.isArray(senseiResponse?.data) ? senseiResponse.data : [];
+
       const studentsWithoutIds = students.filter(row => {
         const id = String(row.ID_SISWA || '').trim();
         return !id || /^SISWA\d+$/i.test(id);
@@ -2254,12 +766,9 @@ window.App = (() => {
         const id = String(row.ID_SENSEI || '').trim();
         return !id || /^SENSEI\d+$/i.test(id);
       }).length;
+
       const now = new Date();
-      const today = [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, '0'),
-        String(now.getDate()).padStart(2, '0')
-      ].join('-');
+      const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
       let editingRecord = null;
 
       const findActor = (type, id) => {
@@ -2271,10 +780,7 @@ window.App = (() => {
       const actorName = row => findActor(row.ACTOR_TYPE, row.ACTOR_ID)?.NAMA || 'ID tidak ditemukan';
 
       el.innerHTML = `
-        ${pageHeader(
-          "Absensi",
-          "Pilih ID siswa atau sensei untuk mencatat kehadiran."
-        )}
+        ${pageHeader("Absensi", "Pilih ID siswa atau sensei untuk mencatat kehadiran.")}
 
         ${(studentsWithoutIds || senseiWithoutIds) ? `
           <div class="alert error attendance-id-warning">
@@ -2360,24 +866,20 @@ window.App = (() => {
         <section class="section attendance-history">
           <div class="section-head"><h2>Riwayat Absensi</h2></div>
           <div class="card">
-            ${renderTable(
-              rows,
-              [
-                { key: "TANGGAL", label: "Tanggal", render: value => esc(String(value || "").slice(0, 10)) },
-                { key: "ACTOR_TYPE", label: "Jenis", render: value => value === "STUDENT" ? "Siswa" : "Sensei" },
-                { key: "ACTOR_ID", label: "ID" },
-                { key: "NAMA", label: "Nama", render: (value, row) => esc(actorName(row)) },
-                { key: "JAM_MASUK", label: "Masuk" },
-                { key: "JAM_KELUAR", label: "Keluar" },
-                { key: "STATUS", label: "Status" }
-              ],
-              {
-                emptyText: "Belum ada catatan absensi.",
-                actions: row => `
-                  <button type="button" class="btn btn-small" data-edit-attendance="${esc(row.ATTENDANCE_ID || "")}" data-row-number="${esc(row.__ROW_NUMBER || "")}">Edit</button>
-                `
-              }
-            )}
+            ${renderTable(rows, [
+              { key: "TANGGAL", label: "Tanggal", render: value => esc(String(value || "").slice(0, 10)) },
+              { key: "ACTOR_TYPE", label: "Jenis", render: value => value === "STUDENT" ? "Siswa" : "Sensei" },
+              { key: "ACTOR_ID", label: "ID" },
+              { key: "NAMA", label: "Nama", render: (value, row) => esc(actorName(row)) },
+              { key: "JAM_MASUK", label: "Masuk" },
+              { key: "JAM_KELUAR", label: "Keluar" },
+              { key: "STATUS", label: "Status" }
+            ], {
+              emptyText: "Belum ada catatan absensi.",
+              actions: row => `
+                <button type="button" class="btn btn-small" data-edit-attendance="${esc(row.ATTENDANCE_ID || "")}" data-row-number="${esc(row.__ROW_NUMBER || "")}">Edit</button>
+              `
+            })}
           </div>
         </section>
       `;
@@ -2410,7 +912,6 @@ window.App = (() => {
           personCard.innerHTML = `<span class="muted">${actorType.value === "STUDENT" && studentsWithoutIds ? "Buat ID siswa terlebih dahulu." : "Pilih peserta dari daftar."}</span>`;
           return;
         }
-
         const detail = actorType.value === "STUDENT"
           ? `WhatsApp: ${actor.NO_WA || "-"} · Program: ${actor.PROGRAM || "-"}`
           : `WhatsApp: ${actor.NO_WA || "-"} · Status: ${actor.STATUS || "-"}`;
@@ -2537,42 +1038,26 @@ window.App = (() => {
       });
 
       populateActors();
-
     } catch (error) {
-
-      renderError(
-        el,
-        error
-      );
-
+      renderError(el, error);
     }
-
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * BILLING
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function renderBilling(
-    el
-  ) {
-
+  async function renderBilling(el) {
     if (!isAdminUser()) {
       el.innerHTML = `<div class="card"><h2>Akses Ditolak</h2><p class="muted">Tagihan siswa hanya dapat dibuka oleh admin.</p></div>`;
       return;
     }
 
     try {
-
-      const [billingResponse, studentsResponse] = await Promise.all([
-        API.billing(),
-        API.students()
-      ]);
+      const [billingResponse, studentsResponse] = await Promise.all([API.billing(), API.students()]);
       if (billingResponse?.success === false) throw new Error(billingResponse.message || "Data tagihan gagal dimuat.");
       if (studentsResponse?.success === false) throw new Error(studentsResponse.message || "Data siswa gagal dimuat.");
+
       const billings = Array.isArray(billingResponse?.data) ? billingResponse.data : [];
       const students = Array.isArray(studentsResponse?.data) ? studentsResponse.data : [];
       const params = new URLSearchParams(window.location.search);
@@ -2596,179 +1081,22 @@ window.App = (() => {
       const resultRoot = qs("#billing-student-result", el);
       let selectedStudent = null;
 
-      async function ensurePdfLibrary() {
-        if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
-        await new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js";
-          script.onload = resolve;
-          script.onerror = () => reject(new Error("Library PDF tidak dapat dimuat. Periksa koneksi internet."));
-          document.head.appendChild(script);
-        });
-        if (!window.jspdf?.jsPDF) throw new Error("Library PDF tidak tersedia.");
-        return window.jspdf.jsPDF;
-      }
-
-      let invoiceLogoPromise = null;
-      function invoiceLogoData() {
-        if (!invoiceLogoPromise) {
-          invoiceLogoPromise = new Promise((resolve, reject) => {
-            const image = new Image();
-            image.onload = () => {
-              const canvas = document.createElement("canvas");
-              canvas.width = image.naturalWidth;
-              canvas.height = image.naturalHeight;
-              const context = canvas.getContext("2d");
-              if (!context) {
-                reject(new Error("Logo tidak dapat disiapkan untuk PDF."));
-                return;
-              }
-              context.drawImage(image, 0, 0);
-              resolve(canvas.toDataURL("image/png"));
-            };
-            image.onerror = () => reject(new Error("Logo LPKS Arima Persada tidak dapat dimuat."));
-            image.src = new URL("assets/logo.webp", document.baseURI).href;
-          });
-        }
-        return invoiceLogoPromise;
-      }
-
       function invoiceDate(value) {
         const text = String(value || "");
         if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
         return text;
       }
 
-      function createInvoicePdf(student, invoice, logoData) {
-        const JsPDF = window.jspdf?.jsPDF;
-        if (!JsPDF) throw new Error("Library PDF belum siap.");
-        const pdf = new JsPDF({ unit: "mm", format: "a4" });
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const margin = 18;
-        const contentWidth = pageWidth - margin * 2;
-
-        pdf.setFillColor(248, 249, 251);
-        pdf.rect(0, 0, pageWidth, 52, "F");
-        pdf.addImage(logoData, "PNG", margin, 12, 27, 27);
-        pdf.setTextColor(34, 34, 38);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(16);
-        pdf.text("LPKS ARIMA PERSADA", 51, 19);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(112, 112, 118);
-        pdf.setFontSize(8.5);
-        pdf.text(pdf.splitTextToSize("Jl. Sidoharjo 1, Desa Negara Ratu, Kecamatan Natar, Kabupaten Lampung Selatan", 140), 51, 26);
-        pdf.text("Konfirmasi: 0813-7908-7768 · 0812-8267-4707 · 0823-7512-8230", 51, 36);
-        pdf.text("Email: arimapersada@gmail.com", 51, 42);
-        pdf.setDrawColor(215, 25, 32);
-        pdf.setLineWidth(1);
-        pdf.line(margin, 52, pageWidth - margin, 52);
-
-        pdf.setTextColor(180, 20, 27);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(14);
-        pdf.text("SURAT TAGIHAN SISWA", margin, 64);
-        pdf.setTextColor(75, 75, 80);
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9);
-        pdf.text(`No. Tagihan: ${invoice.BILLING_ID || "-"}`, margin, 72);
-        pdf.text(`Tanggal cetak: ${new Date().toLocaleDateString("id-ID")}`, pageWidth - margin, 72, { align: "right" });
-
-        pdf.setFillColor(248, 248, 249);
-        pdf.roundedRect(margin, 80, contentWidth, 32, 2, 2, "F");
-        pdf.setTextColor(112, 112, 118);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(8);
-        pdf.text("DITAGIHKAN KEPADA", margin + 6, 88);
-        pdf.setTextColor(34, 34, 38);
-        pdf.setFontSize(12);
-        pdf.text(String(student.NAMA || "-"), margin + 6, 96);
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9);
-        pdf.setTextColor(75, 75, 80);
-        pdf.text(`ID Siswa: ${student.ID_SISWA || "-"}`, margin + 6, 104);
-        pdf.text(`WhatsApp: ${student.NO_WA || "-"}`, pageWidth - margin - 6, 104, { align: "right" });
-
-        pdf.setTextColor(34, 34, 38);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10);
-        pdf.text("RINCIAN TAGIHAN", margin, 124);
-        pdf.setDrawColor(225, 226, 229);
-        pdf.setLineWidth(0.3);
-        pdf.line(margin, 128, pageWidth - margin, 128);
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9);
-        pdf.setTextColor(75, 75, 80);
-        const descriptionLines = pdf.splitTextToSize(String(invoice.DESCRIPTION || "-"), contentWidth - 4);
-        pdf.text("Deskripsi", margin, 137);
-        pdf.setTextColor(34, 34, 38);
-        pdf.text(descriptionLines, margin + 32, 137);
-        let detailsY = 137 + Math.max(1, descriptionLines.length) * 4.5;
-        pdf.setTextColor(75, 75, 80);
-        pdf.text("Kategori", margin, detailsY);
-        pdf.setTextColor(34, 34, 38);
-        pdf.text(String(invoice.CATEGORY || "-"), margin + 32, detailsY);
-        detailsY += 7;
-        pdf.setTextColor(75, 75, 80);
-        pdf.text("Jatuh tempo", margin, detailsY);
-        pdf.setTextColor(34, 34, 38);
-        pdf.text(invoiceDate(invoice.DUE_DATE) || "-", margin + 32, detailsY);
-        pdf.setTextColor(75, 75, 80);
-        pdf.text("Status", pageWidth / 2 + 10, detailsY);
-        pdf.setTextColor(34, 34, 38);
-        pdf.text(String(invoice.STATUS || "-"), pageWidth / 2 + 32, detailsY);
-
-        const totalY = detailsY + 12;
-        pdf.setFillColor(248, 248, 249);
-        pdf.roundedRect(margin, totalY, contentWidth, 24, 2, 2, "F");
-        pdf.setTextColor(34, 34, 38);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10);
-        pdf.text("TOTAL TAGIHAN", margin + 7, totalY + 15);
-        pdf.setTextColor(180, 20, 27);
-        pdf.setFontSize(15);
-        pdf.text(formatRupiah(invoice.AMOUNT), pageWidth - margin - 7, totalY + 15, { align: "right" });
-
-        let footerY = 250;
-        if (invoice.NOTES) {
-          pdf.setTextColor(112, 112, 118);
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(8);
-          pdf.text("Catatan:", margin, totalY + 34);
-          const noteLines = pdf.splitTextToSize(String(invoice.NOTES), contentWidth);
-          const visibleNoteLines = noteLines.slice(0, 3);
-          pdf.text(visibleNoteLines, margin, totalY + 39);
-          footerY = Math.max(230, totalY + 45 + visibleNoteLines.length * 3.5);
-        }
-        const footerText = "Mohon melakukan pembayaran sebelum tanggal jatuh tempo. Apabila terdapat kendala dalam pembayaran atau membutuhkan pembicaraan terkait mekanisme penyelesaian pembayaran dapat menghubungi Pak Suwardi (0813-7908-7768), Sensei Rachmat (0812-8267-4707), Admin LPKS Arima Persada (0823-7512-8230)";
-        const footerLines = pdf.splitTextToSize(footerText, contentWidth);
-        const footerHeight = footerLines.length * 4;
-        if (footerY + footerHeight > 289) {
-          pdf.addPage();
-          footerY = 24;
-        }
-        pdf.setDrawColor(225, 226, 229);
-        pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-        pdf.setTextColor(92, 92, 98);
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(8);
-        pdf.text(footerLines, margin, footerY);
-        const fileId = String(invoice.BILLING_ID || student.ID_SISWA).replace(/[^A-Za-z0-9_-]/g, "-");
-        return { pdf, fileName: `tagihan-${fileId}.pdf` };
-      }
-
       async function downloadInvoice(student, invoice) {
-        await ensurePdfLibrary();
-        const logoData = await invoiceLogoData();
-        const { pdf, fileName } = createInvoicePdf(student, invoice, logoData);
+        const { pdf, fileName } = await window.ArimaPdf.buildInvoice(invoice, student);
         pdf.save(fileName);
       }
 
-      function sendInvoiceWhatsApp(student, invoice, targetWindow = null) {
+      function sendInvoiceWhatsApp(student, invoice) {
         let phone = String(student.NO_WA || "").replace(/\D/g, "");
+        if (!phone) throw new Error("Nomor WhatsApp siswa belum tersedia.");
         if (phone.startsWith("0")) phone = `62${phone.slice(1)}`;
         else if (!phone.startsWith("62")) phone = `62${phone}`;
-        if (!phone) throw new Error("Nomor WhatsApp siswa belum tersedia.");
         const message = [
           `LPKS Arima Persada - Surat Tagihan`,
           `ID Siswa: ${student.ID_SISWA}`,
@@ -2780,8 +1108,7 @@ window.App = (() => {
           `Status: ${invoice.STATUS || "-"}`,
           "Silakan hubungi LPKS Arima Persada untuk informasi pembayaran."
         ].join("\n");
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-        window.open(url, "_blank", "noopener,noreferrer");
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
       }
 
       function renderStudentInvoices(student) {
@@ -2791,7 +1118,10 @@ window.App = (() => {
           return;
         }
 
-        const studentInvoices = billings.filter(row => String(row.ID_SISWA || "").trim().toUpperCase() === String(student.ID_SISWA || "").trim().toUpperCase());
+        const studentInvoices = billings.filter(row =>
+          String(row.ID_SISWA || "").trim().toUpperCase() === String(student.ID_SISWA || "").trim().toUpperCase()
+        );
+
         resultRoot.innerHTML = `
           <section class="card billing-student-card">
             <div><span class="billing-label">SISWA</span><h2>${esc(student.NAMA || "Tanpa nama")}</h2><span class="muted">ID ${esc(student.ID_SISWA)}</span></div>
@@ -2799,18 +1129,19 @@ window.App = (() => {
           </section>
           <section class="section billing-invoice-list">
             <div class="section-head"><h2>Daftar Tagihan (${formatNumber(studentInvoices.length)})</h2></div>
-            <div class="card">${renderTable(studentInvoices,[
-              {key:"BILLING_ID",label:"No. Tagihan",render:value=>esc(value||"")},
-              {key:"DESCRIPTION",label:"Rincian",render:value=>esc(value||"")},
-              {key:"DUE_DATE",label:"Jatuh Tempo",render:value=>esc(invoiceDate(value))},
-              {key:"AMOUNT",label:"Jumlah",render:value=>formatRupiah(value)},
-              {key:"STATUS",label:"Status",render:value=>esc(value||"")}
-            ],{
-              emptyText:"Belum ada tagihan untuk siswa ini.",
-              actions:invoice=>`
-                <button type="button" class="btn btn-small" data-edit-billing="${esc(invoice.BILLING_ID||"")}">Edit</button>
-                <button type="button" class="btn btn-small" data-download-invoice="${esc(invoice.BILLING_ID||"")}">Unduh PDF</button>
-                <button type="button" class="btn btn-small btn-light" data-send-invoice="${esc(invoice.BILLING_ID||"")}">Kirim / WhatsApp</button>
+            <div class="card">${renderTable(studentInvoices, [
+              { key: "BILLING_ID", label: "No. Tagihan", render: value => esc(value || "") },
+              { key: "DESCRIPTION", label: "Rincian", render: value => esc(value || "") },
+              { key: "DUE_DATE", label: "Jatuh Tempo", render: value => esc(invoiceDate(value)) },
+              { key: "AMOUNT", label: "Jumlah", render: value => formatRupiah(value) },
+              { key: "STATUS", label: "Status", render: value => esc(value || "") }
+            ], {
+              emptyText: "Belum ada tagihan untuk siswa ini.",
+              actions: invoice => `
+                <button type="button" class="btn btn-small" data-edit-billing="${esc(invoice.BILLING_ID || "")}">Edit</button>
+                <button type="button" class="btn btn-small" data-download-invoice="${esc(invoice.BILLING_ID || "")}">Unduh PDF</button>
+                <button type="button" class="btn btn-small btn-light" data-send-invoice="${esc(invoice.BILLING_ID || "")}">WhatsApp</button>
+                <button type="button" class="btn btn-small btn-danger" data-delete-billing="${esc(invoice.BILLING_ID || "")}">Hapus</button>
               `
             })}</div>
           </section>
@@ -2820,6 +1151,7 @@ window.App = (() => {
           const invoice = studentInvoices.find(row => String(row.BILLING_ID) === String(button.dataset.editBilling));
           if (invoice) openFormModal("billing", invoice);
         }));
+
         qsa("[data-download-invoice]", resultRoot).forEach(button => button.addEventListener("click", async () => {
           const invoice = studentInvoices.find(row => String(row.BILLING_ID) === String(button.dataset.downloadInvoice));
           if (!invoice) return;
@@ -2828,11 +1160,28 @@ window.App = (() => {
           catch (error) { showToast(error.message || "PDF gagal dibuat.", "error"); }
           finally { button.disabled = false; }
         }));
-        qsa("[data-send-invoice]", resultRoot).forEach(button => button.addEventListener("click", async () => {
+
+        qsa("[data-send-invoice]", resultRoot).forEach(button => button.addEventListener("click", () => {
           const invoice = studentInvoices.find(row => String(row.BILLING_ID) === String(button.dataset.sendInvoice));
           if (!invoice) return;
           try { sendInvoiceWhatsApp(student, invoice); }
           catch (error) { showToast(error.message || "WhatsApp tidak dapat dibuka.", "error"); }
+        }));
+
+        qsa("[data-delete-billing]", resultRoot).forEach(button => button.addEventListener("click", async () => {
+          const invoice = studentInvoices.find(row => String(row.BILLING_ID) === String(button.dataset.deleteBilling));
+          if (!invoice) return;
+          if (!confirm(`Hapus tagihan ${invoice.BILLING_ID}? Tindakan ini tidak dapat dibatalkan.`)) return;
+          button.disabled = true;
+          try {
+            const res = await API.deleteRecord("billing", { BILLING_ID: invoice.BILLING_ID, __ROW_NUMBER: invoice.__ROW_NUMBER });
+            if (res?.success === false) throw new Error(res.message || "Gagal menghapus tagihan.");
+            showToast(res?.message || "Tagihan berhasil dihapus.");
+            await renderBilling(el);
+          } catch (error) {
+            button.disabled = false;
+            showToast(error.message || "Gagal menghapus tagihan.", "error");
+          }
         }));
       }
 
@@ -2860,34 +1209,18 @@ window.App = (() => {
       } else {
         resultRoot.innerHTML = `<div class="card billing-empty-state"><strong>Cari data tagihan berdasarkan ID siswa.</strong><span>Nama dan nomor WhatsApp akan muncul otomatis jika ID ditemukan.</span></div>`;
       }
-      ensurePdfLibrary().catch(() => {});
-
     } catch (error) {
-
-      renderError(
-        el,
-        error
-      );
-
+      renderError(el, error);
     }
-
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * FINANCE
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function renderFinance(
-    el
-  ) {
-
+  async function renderFinance(el) {
     try {
-
-      const response =
-        await API.finance();
+      const response = await API.finance();
       if (response?.success === false) throw new Error(response.message || "Data mutasi keuangan gagal dimuat.");
 
       const rows = Array.isArray(response?.data) ? response.data : [];
@@ -2918,16 +1251,16 @@ window.App = (() => {
         <section class="section card">
           <div class="section-head"><h2>Transaksi ${esc(selectedMonth)}</h2></div>
           ${renderTable(monthRows, [
-            {key:"DATE",label:"Tanggal",render:value=>esc(String(value||"").slice(0,10))},
-            {key:"TYPE",label:"Jenis",render:value=>esc(value||"")},
-            {key:"CATEGORY",label:"Kategori",render:value=>esc(value||"")},
-            {key:"DESCRIPTION",label:"Keterangan",render:value=>esc(value||"")},
-            {key:"AMOUNT",label:"Nominal",render:value=>formatRupiah(value)},
-            {key:"PAYMENT_METHOD",label:"Metode",render:value=>esc(value||"")},
-            {key:"REFERENCE_NO",label:"Referensi",render:value=>esc(value||"")}
+            { key: "DATE", label: "Tanggal", render: value => esc(String(value || "").slice(0, 10)) },
+            { key: "TYPE", label: "Jenis", render: value => esc(value || "") },
+            { key: "CATEGORY", label: "Kategori", render: value => esc(value || "") },
+            { key: "DESCRIPTION", label: "Keterangan", render: value => esc(value || "") },
+            { key: "AMOUNT", label: "Nominal", render: value => formatRupiah(value) },
+            { key: "PAYMENT_METHOD", label: "Metode", render: value => esc(value || "") },
+            { key: "REFERENCE_NO", label: "Referensi", render: value => esc(value || "") }
           ], {
-            emptyText:"Belum ada transaksi pada bulan ini.",
-            actions:row=>`<button type="button" class="btn btn-small" data-edit-finance="${esc(row.TRANSACTION_ID||"")}">Edit</button>`
+            emptyText: "Belum ada transaksi pada bulan ini.",
+            actions: row => `<button type="button" class="btn btn-small" data-edit-finance="${esc(row.TRANSACTION_ID || "")}">Edit</button>`
           })}
         </section>
       `;
@@ -2943,45 +1276,23 @@ window.App = (() => {
         const row = rows.find(item => String(item.TRANSACTION_ID) === String(button.dataset.editFinance));
         if (row) openFormModal("finance", row);
       }));
-
     } catch (error) {
-
-      renderError(
-        el,
-        error
-      );
-
+      renderError(el, error);
     }
-
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * SALARY
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function renderSalary(
-    el
-  ) {
-
+  async function renderSalary(el) {
     if (!isAdminUser()) {
-      el.innerHTML = `
-        <div class="card">
-          <h2>Akses Ditolak</h2>
-          <p class="muted">Menu payroll hanya tersedia untuk admin.</p>
-        </div>
-      `;
+      el.innerHTML = `<div class="card"><h2>Akses Ditolak</h2><p class="muted">Menu payroll hanya tersedia untuk admin.</p></div>`;
       return;
     }
 
     try {
-
-      const [salaryResponse, senseiResponse] = await Promise.all([
-        API.salary(),
-        API.sensei()
-      ]);
+      const [salaryResponse, senseiResponse] = await Promise.all([API.salary(), API.sensei()]);
       const senseiRows = Array.isArray(senseiResponse?.data)
         ? senseiResponse.data.filter(row => String(row.ID_SENSEI || "").trim())
         : [];
@@ -2991,9 +1302,7 @@ window.App = (() => {
           SENSEI_NAME: senseiRows.find(sensei => String(sensei.ID_SENSEI) === String(row.ID_SENSEI))?.NAMA || "Sensei tidak ditemukan"
         }));
 
-
       el.innerHTML = `
-
         ${pageHeader(
           "Payroll Sensei",
           "Gaji otomatis dari absensi sensei, berdasarkan tarif per JP (45 menit), di luar waktu istirahat.",
@@ -3001,206 +1310,120 @@ window.App = (() => {
           "btn-add-salary"
         )}
 
-
         <div class="section">
-
           <div class="card">
             <strong>Rumus payroll</strong>
             <p class="muted">Total menit mengajar setelah dikurangi istirahat 10.00–10.15 dan 12.00–13.15, dibagi 45 menit, lalu dikali tarif per JP.</p>
           </div>
-
         </div>
-
 
         <div class="card">
-
-          ${renderTable(
-            rows,
-            [
-              {
-                key: "SALARY_ID",
-                label: "ID"
-              },
-
-              {
-                key: "ID_SENSEI",
-                label: "ID Sensei"
-              },
-
-              {
-                key: "SENSEI_NAME",
-                label: "Nama Sensei"
-              },
-
-              {
-                key: "PERIOD",
-                label: "Periode"
-              },
-
-              {
-                key: "MEETING_COUNT",
-                label: "Pertemuan"
-              },
-
-              {
-                key: "HOUR_COUNT",
-                label: "JP (45 menit)"
-              },
-
-              {
-                key: "BASE_AMOUNT",
-                label: "Gaji Pokok",
-                render: value =>
-                  formatRupiah(value)
-              },
-
-              {
-                key: "BONUS",
-                label: "Bonus",
-                render: value =>
-                  formatRupiah(value)
-              },
-
-              {
-                key: "DEDUCTION",
-                label: "Potongan",
-                render: value =>
-                  formatRupiah(value)
-              },
-
-              {
-                key: "NET_SALARY",
-                label: "Gaji Bersih",
-                render: value =>
-                  formatRupiah(value)
-              },
-
-              {
-                key: "PAYMENT_STATUS",
-                label: "Status"
-              }
-            ],
-            {
-              actions: row => `
-
-                <button
-                  type="button"
-                  class="btn btn-small"
-                  data-edit-salary="${esc(
-                    row.SALARY_ID
-                  )}"
-                >
-                  Edit
-                </button>
-
-              `
-            }
-          )}
-
+          ${renderTable(rows, [
+            { key: "SALARY_ID", label: "ID" },
+            { key: "ID_SENSEI", label: "ID Sensei" },
+            { key: "SENSEI_NAME", label: "Nama Sensei" },
+            { key: "PERIOD", label: "Periode" },
+            { key: "MEETING_COUNT", label: "Pertemuan" },
+            { key: "HOUR_COUNT", label: "JP (45 menit)" },
+            { key: "BASE_AMOUNT", label: "Gaji Pokok", render: value => formatRupiah(value) },
+            { key: "BONUS", label: "Bonus", render: value => formatRupiah(value) },
+            { key: "DEDUCTION", label: "Potongan", render: value => formatRupiah(value) },
+            { key: "NET_SALARY", label: "Gaji Bersih", render: value => formatRupiah(value) },
+            { key: "PAYMENT_STATUS", label: "Status" }
+          ], {
+            actions: row => `
+              <button type="button" class="btn btn-small" data-edit-salary="${esc(row.SALARY_ID)}">Edit</button>
+              <button type="button" class="btn btn-small btn-light" data-pdf-salary="${esc(row.SALARY_ID)}">Slip PDF</button>
+              <button type="button" class="btn btn-small btn-light" data-email-salary="${esc(row.SALARY_ID)}">Email</button>
+              <button type="button" class="btn btn-small btn-danger" data-delete-salary="${esc(row.SALARY_ID)}">Hapus</button>
+            `
+          })}
         </div>
-
       `;
 
+      qs("#btn-add-salary")?.addEventListener("click", () => openFormModal("salary", null, { senseiRows }));
 
-      const addButton =
-        qs(
-          "#btn-add-salary"
-        );
+      qsa("[data-edit-salary]").forEach(button => {
+        button.addEventListener("click", () => {
+          const row = rows.find(item => String(item.SALARY_ID) === String(button.dataset.editSalary));
+          if (row) openFormModal("salary", row, { senseiRows });
+        });
+      });
 
-      if (addButton) {
-
-        addButton.addEventListener(
-          "click",
-          () => {
-
-            openFormModal(
-              "salary",
-              null,
-              { senseiRows }
-            );
-
+      qsa("[data-pdf-salary]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const row = rows.find(item => String(item.SALARY_ID) === String(button.dataset.pdfSalary));
+          if (!row) return;
+          button.disabled = true;
+          try {
+            const sensei = senseiRows.find(s => String(s.ID_SENSEI) === String(row.ID_SENSEI)) || {};
+            const { pdf, fileName } = await window.ArimaPdf.buildSalarySlip(row, sensei);
+            pdf.save(fileName);
+          } catch (error) {
+            showToast(error.message || "PDF slip gaji gagal dibuat.", "error");
+          } finally {
+            button.disabled = false;
           }
-        );
+        });
+      });
 
-      }
+      qsa("[data-email-salary]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const row = rows.find(item => String(item.SALARY_ID) === String(button.dataset.emailSalary));
+          if (!row) return;
+          button.disabled = true;
+          button.textContent = "Mengirim...";
+          try {
+            const sensei = senseiRows.find(s => String(s.ID_SENSEI) === String(row.ID_SENSEI)) || {};
+            const { pdf } = await window.ArimaPdf.buildSalarySlip(row, sensei);
+            const pdfBase64 = window.ArimaPdf.pdfToBase64(pdf);
+            const res = await API.salaryEmail({ SALARY_ID: row.SALARY_ID, pdfBase64 });
+            if (res?.success === false) throw new Error(res.message || "Gagal mengirim email.");
+            showToast(res?.message || "Slip gaji berhasil dikirim.");
+          } catch (error) {
+            showToast(error.message || "Email gagal dikirim.", "error");
+          } finally {
+            button.disabled = false;
+            button.textContent = "Email";
+          }
+        });
+      });
 
-
-      qsa(
-        "[data-edit-salary]"
-      ).forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              const id =
-                button.dataset
-                  .editSalary;
-
-              const row =
-                rows.find(
-                  item =>
-                    String(
-                      item.SALARY_ID
-                    ) === String(id)
-                );
-
-              if (row) {
-
-                openFormModal(
-                  "salary",
-                  row,
-                  { senseiRows }
-                );
-
-              }
-
-            }
-          );
-
-        }
-      );
-
+      qsa("[data-delete-salary]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const row = rows.find(item => String(item.SALARY_ID) === String(button.dataset.deleteSalary));
+          if (!row) return;
+          if (!confirm(`Hapus payroll ${row.SALARY_ID} periode ${row.PERIOD}?`)) return;
+          button.disabled = true;
+          try {
+            const res = await API.deleteRecord("salary", { SALARY_ID: row.SALARY_ID, __ROW_NUMBER: row.__ROW_NUMBER });
+            if (res?.success === false) throw new Error(res.message || "Gagal menghapus payroll.");
+            showToast(res?.message || "Payroll berhasil dihapus.");
+            await renderSalary(el);
+          } catch (error) {
+            button.disabled = false;
+            showToast(error.message || "Gagal menghapus payroll.", "error");
+          }
+        });
+      });
     } catch (error) {
-
-      renderError(
-        el,
-        error
-      );
-
+      renderError(el, error);
     }
-
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * REPORTS
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function renderReports(
-    el
-  ) {
-
+  async function renderReports(el) {
     if (!isAdminUser()) {
-      el.innerHTML = `
-        <div class="card">
-          <h2>Akses Ditolak</h2>
-          <p class="muted">Laporan keuangan hanya dapat dibuka oleh admin.</p>
-        </div>
-      `;
+      el.innerHTML = `<div class="card"><h2>Akses Ditolak</h2><p class="muted">Laporan keuangan hanya dapat dibuka oleh admin.</p></div>`;
       return;
     }
 
     try {
-
       const [billingResponse, paymentResponse, salaryResponse, senseiResponse] = await Promise.all([
-        API.billing(),
-        API.payments(),
-        API.salary(),
-        API.sensei()
+        API.billing(), API.payments(), API.salary(), API.sensei()
       ]);
       const billings = Array.isArray(billingResponse?.data) ? billingResponse.data : [];
       const payments = Array.isArray(paymentResponse?.data) ? paymentResponse.data : [];
@@ -3225,11 +1448,13 @@ window.App = (() => {
         return Number.isFinite(amount) ? amount : 0;
       };
       const sum = (rows, field) => rows.reduce((total, row) => total + amountOf(row[field]), 0);
+
       const monthlyBillings = billings.filter(row => monthOf(row.DUE_DATE) === selectedMonth);
       const monthlyPayments = payments.filter(row => monthOf(row.PAYMENT_DATE) === selectedMonth);
       const monthlySalaries = salaries.filter(row => monthOf(row.PERIOD) === selectedMonth);
       const paidSalaries = monthlySalaries.filter(row => ["DIBAYAR", "LUNAS", "PAID"].includes(String(row.PAYMENT_STATUS || "").trim().toUpperCase()));
       const pendingSalaries = monthlySalaries.filter(row => !["DIBAYAR", "LUNAS", "PAID"].includes(String(row.PAYMENT_STATUS || "").trim().toUpperCase()));
+
       const amountBilled = sum(monthlyBillings, "AMOUNT");
       const amountCollected = sum(monthlyPayments, "AMOUNT");
       const amountOutstanding = monthlyBillings.reduce((total, billing) => {
@@ -3239,6 +1464,7 @@ window.App = (() => {
           .reduce((paid, payment) => paid + amountOf(payment.AMOUNT), 0);
         return total + Math.max(0, amountOf(billing.AMOUNT) - paidToMonth);
       }, 0);
+
       const payrollPaid = sum(paidSalaries, "NET_SALARY");
       const payrollPending = sum(pendingSalaries, "NET_SALARY");
       const netCashFlow = amountCollected - payrollPaid;
@@ -3269,38 +1495,38 @@ window.App = (() => {
 
         <section class="section report-ledger">
           <div class="section-head"><h2>Tagihan jatuh tempo</h2></div>
-          <div class="card">${renderTable(monthlyBillings,[
-            {key:"BILLING_ID",label:"ID Tagihan",render:value=>esc(value||"")},
-            {key:"ID_SISWA",label:"ID Siswa",render:value=>esc(value||"")},
-            {key:"DESCRIPTION",label:"Deskripsi",render:value=>esc(value||"")},
-            {key:"DUE_DATE",label:"Jatuh Tempo",render:value=>esc(String(value||"").slice(0,10))},
-            {key:"STATUS",label:"Status",render:value=>esc(value||"")},
-            {key:"AMOUNT",label:"Nominal",render:value=>formatRupiah(value)}
-          ],{emptyText:"Tidak ada tagihan jatuh tempo pada periode ini."})}</div>
+          <div class="card">${renderTable(monthlyBillings, [
+            { key: "BILLING_ID", label: "ID Tagihan", render: value => esc(value || "") },
+            { key: "ID_SISWA", label: "ID Siswa", render: value => esc(value || "") },
+            { key: "DESCRIPTION", label: "Deskripsi", render: value => esc(value || "") },
+            { key: "DUE_DATE", label: "Jatuh Tempo", render: value => esc(String(value || "").slice(0, 10)) },
+            { key: "STATUS", label: "Status", render: value => esc(value || "") },
+            { key: "AMOUNT", label: "Nominal", render: value => formatRupiah(value) }
+          ], { emptyText: "Tidak ada tagihan jatuh tempo pada periode ini." })}</div>
         </section>
 
         <section class="section report-ledger">
           <div class="section-head"><h2>Pembayaran diterima</h2></div>
-          <div class="card">${renderTable(monthlyPayments,[
-            {key:"PAYMENT_DATE",label:"Tanggal",render:value=>esc(String(value||"").slice(0,10))},
-            {key:"PAYMENT_ID",label:"ID Pembayaran",render:value=>esc(value||"")},
-            {key:"ID_SISWA",label:"ID Siswa",render:value=>esc(value||"")},
-            {key:"BILLING_ID",label:"ID Tagihan",render:value=>esc(value||"")},
-            {key:"PAYMENT_METHOD",label:"Metode",render:value=>esc(value||"")},
-            {key:"AMOUNT",label:"Nominal",render:value=>formatRupiah(value)}
-          ],{emptyText:"Tidak ada pembayaran pada periode ini."})}</div>
+          <div class="card">${renderTable(monthlyPayments, [
+            { key: "PAYMENT_DATE", label: "Tanggal", render: value => esc(String(value || "").slice(0, 10)) },
+            { key: "PAYMENT_ID", label: "ID Pembayaran", render: value => esc(value || "") },
+            { key: "ID_SISWA", label: "ID Siswa", render: value => esc(value || "") },
+            { key: "BILLING_ID", label: "ID Tagihan", render: value => esc(value || "") },
+            { key: "PAYMENT_METHOD", label: "Metode", render: value => esc(value || "") },
+            { key: "AMOUNT", label: "Nominal", render: value => formatRupiah(value) }
+          ], { emptyText: "Tidak ada pembayaran pada periode ini." })}</div>
         </section>
 
         <section class="section report-ledger">
           <div class="section-head"><h2>Payroll sensei</h2></div>
-          <div class="card">${renderTable(monthlySalaries,[
-            {key:"ID_SENSEI",label:"ID Sensei",render:value=>esc(value||"")},
-            {key:"NAMA",label:"Nama",render:(value,row)=>esc(senseiName(row.ID_SENSEI))},
-            {key:"HOUR_COUNT",label:"JP",render:value=>formatNumber(value)},
-            {key:"NET_SALARY",label:"Gaji Bersih",render:value=>formatRupiah(value)},
-            {key:"PAYMENT_STATUS",label:"Status",render:value=>esc(value||"")},
-            {key:"PAYMENT_DATE",label:"Tanggal Bayar",render:value=>esc(String(value||"").slice(0,10))}
-          ],{emptyText:"Belum ada payroll pada periode ini."})}</div>
+          <div class="card">${renderTable(monthlySalaries, [
+            { key: "ID_SENSEI", label: "ID Sensei", render: value => esc(value || "") },
+            { key: "NAMA", label: "Nama", render: (value, row) => esc(senseiName(row.ID_SENSEI)) },
+            { key: "HOUR_COUNT", label: "JP", render: value => formatNumber(value) },
+            { key: "NET_SALARY", label: "Gaji Bersih", render: value => formatRupiah(value) },
+            { key: "PAYMENT_STATUS", label: "Status", render: value => esc(value || "") },
+            { key: "PAYMENT_DATE", label: "Tanggal Bayar", render: value => esc(String(value || "").slice(0, 10)) }
+          ], { emptyText: "Belum ada payroll pada periode ini." })}</div>
         </section>
       `;
 
@@ -3328,29 +1554,16 @@ window.App = (() => {
         link.remove();
         URL.revokeObjectURL(link.href);
       });
-
     } catch (error) {
-
-      renderError(
-        el,
-        error
-      );
-
+      renderError(el, error);
     }
-
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * SETTINGS
-   * =========================================================
-   */
+   * ========================================================= */
 
-  async function renderSettings(
-    el
-  ) {
-
+  async function renderSettings(el) {
     if (!isAdminUser()) {
       el.innerHTML = `
         ${pageHeader("Pengaturan", "Informasi sistem ARIMA Management System.")}
@@ -3365,9 +1578,7 @@ window.App = (() => {
 
     try {
       const [usersResult, studentsResult, senseiResult] = await Promise.allSettled([
-        API.users(),
-        API.students(),
-        API.sensei()
+        API.users(), API.students(), API.sensei()
       ]);
       const responseError = (result, label) => {
         if (result.status === "rejected") return result.reason?.message || `Data ${label} gagal dimuat.`;
@@ -3407,16 +1618,16 @@ window.App = (() => {
           <div class="card">
             ${usersError ? `<div class="alert error" role="alert">${esc(usersError)}</div>` : ""}
             ${directoryErrors.map(message => `<div class="alert error" role="alert">${esc(message)}</div>`).join("")}
-            ${renderTable(users,[
-              {key:"USER_ID",label:"ID Akun",render:value=>esc(value||"")},
-              {key:"MASTER_ID",label:"ID Master",render:value=>esc(value||"-")},
-              {key:"NAMA",label:"Nama",render:value=>esc(value||"")},
-              {key:"ROLE",label:"Role",render:value=>esc(value||"")}
-            ],{
-              emptyText:"Belum ada akun yang terdaftar.",
-              actions:account=>`
+            ${renderTable(users, [
+              { key: "USER_ID", label: "ID Akun", render: value => esc(value || "") },
+              { key: "MASTER_ID", label: "ID Master", render: value => esc(value || "-") },
+              { key: "NAMA", label: "Nama", render: value => esc(value || "") },
+              { key: "ROLE", label: "Role", render: value => esc(value || "") }
+            ], {
+              emptyText: "Belum ada akun yang terdaftar.",
+              actions: account => `
                 <button type="button" class="btn btn-small" data-reset-account="${esc(account.USER_ID)}">Reset Password</button>
-                ${String(account.USER_ID).toUpperCase()===String(user?.id||user?.ID||"").toUpperCase()?"":`<button type="button" class="btn btn-small btn-danger" data-delete-account="${esc(account.USER_ID)}">Hapus</button>`}
+                ${String(account.USER_ID).toUpperCase() === String(user?.id || user?.ID || "").toUpperCase() ? "" : `<button type="button" class="btn btn-small btn-danger" data-delete-account="${esc(account.USER_ID)}">Hapus</button>`}
               `
             })}
           </div>
@@ -3465,9 +1676,7 @@ window.App = (() => {
     } catch (error) {
       renderError(el, error);
     }
-
   }
-
 
   function openAccountModal(mode, account, directories) {
     if (!isAdminUser()) {
@@ -3557,6 +1766,23 @@ window.App = (() => {
         return name[0].slice(0, 3).toUpperCase() + phone.slice(-4);
       };
 
+      const updateLinkedPreview = () => {
+        const role = roleSelect.value;
+        const people = role === "SISWA" ? directories.students : directories.sensei;
+        const idKey = role === "SISWA" ? "ID_SISWA" : "ID_SENSEI";
+        const person = people.find(item => String(item[idKey]) === String(linkedSelect.value));
+        if (!person) {
+          preview.innerHTML = "Pilih ID untuk melihat nama akun dan ID login.";
+          return;
+        }
+        const generatedId = generatedAccountId(person);
+        preview.innerHTML = `
+          <strong>${esc(person.NAMA || "Tanpa nama")}</strong>
+          <span>ID Master: ${esc(linkedSelect.value)}</span>
+          <span>ID Login: <strong>${esc(generatedId || "Tidak dapat dibuat: lengkapi nama dan nomor WhatsApp")}</strong></span>
+        `;
+      };
+
       const populateLinkedIds = () => {
         const role = roleSelect.value;
         const people = role === "SISWA" ? directories.students : directories.sensei;
@@ -3582,22 +1808,6 @@ window.App = (() => {
       };
 
       roleSelect.addEventListener("change", updateRoleFields);
-      const updateLinkedPreview = () => {
-        const role = roleSelect.value;
-        const people = role === "SISWA" ? directories.students : directories.sensei;
-        const idKey = role === "SISWA" ? "ID_SISWA" : "ID_SENSEI";
-        const person = people.find(item => String(item[idKey]) === String(linkedSelect.value));
-        if (!person) {
-          preview.innerHTML = "Pilih ID untuk melihat nama akun dan ID login.";
-          return;
-        }
-        const generatedId = generatedAccountId(person);
-        preview.innerHTML = `
-          <strong>${esc(person.NAMA || "Tanpa nama")}</strong>
-          <span>ID Master: ${esc(linkedSelect.value)}</span>
-          <span>ID Login: <strong>${esc(generatedId || "Tidak dapat dibuat: lengkapi nama dan nomor WhatsApp")}</strong></span>
-        `;
-      };
       linkedSelect.addEventListener("change", updateLinkedPreview);
       updateRoleFields();
     }
@@ -3633,31 +1843,15 @@ window.App = (() => {
     });
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * FORM MODAL
-   * =========================================================
-   */
+   * ========================================================= */
 
-  function openFormModal(
-    type,
-    existing = null,
-    options = {}
-  ) {
-
-    const config =
-      FORM_CONFIG[type];
-
+  function openFormModal(type, existing = null, options = {}) {
+    const config = FORM_CONFIG[type];
     if (!config) {
-
-      showToast(
-        "Form belum tersedia.",
-        "error"
-      );
-
+      showToast("Form belum tersedia.", "error");
       return;
-
     }
 
     if (type === "salary" && !isAdminUser()) {
@@ -3665,393 +1859,136 @@ window.App = (() => {
       return;
     }
 
+    document.getElementById("arima-form-modal")?.remove();
 
-    const old =
-      document.getElementById(
-        "arima-form-modal"
-      );
-
-    if (old) {
-      old.remove();
-    }
-
-
-    const isEdit =
-      !!existing;
-
-
+    const isEdit = !!existing;
     const formFields = type === "sensei" && !isAdminUser()
       ? config.fields.filter(field => field.key !== "TARIF_PER_JAM")
       : config.fields;
 
-    const fields =
-      formFields.map(
-        field => {
+    const fields = formFields.map(field => {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const defaultValue = type === "salary" && field.key === "PERIOD"
+        ? currentMonth
+        : type === "finance" && field.key === "DATE"
+          ? currentDate
+          : type === "salary" && field.key === "PAYMENT_STATUS"
+            ? "PENDING"
+            : "";
+      const rawValue = existing?.[field.key] ?? options.defaults?.[field.key] ?? defaultValue;
+      const value = field.type === "date"
+        ? String(rawValue || "").slice(0, 10)
+        : field.type === "month"
+          ? String(rawValue || "").slice(0, 7)
+          : rawValue;
 
-          const now = new Date();
-          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-          const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-          const defaultValue = type === "salary" && field.key === "PERIOD"
-            ? currentMonth
-            : type === "finance" && field.key === "DATE"
-              ? currentDate
-            : type === "salary" && field.key === "PAYMENT_STATUS"
-              ? "PENDING"
-              : "";
-          const rawValue = existing?.[field.key] ?? options.defaults?.[field.key] ?? defaultValue;
-          const value = field.type === "date"
-            ? String(rawValue || "").slice(0, 10)
-            : field.type === "month"
-              ? String(rawValue || "").slice(0, 7)
-              : rawValue;
-
-
-          if (type === "salary" && field.key === "ID_SENSEI") {
-            const senseiRows = Array.isArray(options.senseiRows) ? options.senseiRows : [];
-            return `
-              <div class="form-group form-group-wide payroll-sensei-field">
-                <label for="payroll-sensei-id">Sensei</label>
-                <select id="payroll-sensei-id" name="ID_SENSEI" required>
-                  <option value="">Pilih ID Sensei...</option>
-                  ${senseiRows.map(row => `
-                    <option value="${esc(row.ID_SENSEI)}" ${String(value) === String(row.ID_SENSEI) ? "selected" : ""}>
-                      ${esc(row.ID_SENSEI)} · ${esc(row.NAMA || "Tanpa nama")}
-                    </option>
-                  `).join("")}
-                </select>
-                <div class="payroll-sensei-preview muted" id="payroll-sensei-preview">Pilih sensei untuk melihat tarif dan ringkasan payroll.</div>
-              </div>
-            `;
-          }
-
-          if (type === "billing" && field.key === "ID_SISWA") {
-            const studentRows = Array.isArray(options.studentRows) ? options.studentRows : [];
-            const knownIds = studentRows.map(row => String(row.ID_SISWA || "").trim()).filter(Boolean);
-            const legacyOption = value && !knownIds.includes(String(value))
-              ? `<option value="${esc(value)}" selected>${esc(value)} · Siswa tidak ditemukan</option>`
-              : "";
-            return `
-              <div class="form-group">
-                <label for="billing-student-select">ID Siswa <span>*</span></label>
-                <select id="billing-student-select" name="ID_SISWA" required>
-                  <option value="">Pilih siswa...</option>
-                  ${studentRows.filter(row => String(row.ID_SISWA || "").trim()).map(row => `
-                    <option value="${esc(row.ID_SISWA)}" ${String(value) === String(row.ID_SISWA) ? "selected" : ""}>
-                      ${esc(row.ID_SISWA)} · ${esc(row.NAMA || "Tanpa nama")}
-                    </option>
-                  `).join("")}
-                  ${legacyOption}
-                </select>
-              </div>
-            `;
-          }
-
-          if (
-            field.type ===
-            "select"
-          ) {
-
-            return `
-
-              <div class="form-group">
-
-                <label>
-                  ${esc(
-                    field.label
-                  )}
-
-                  ${
-                    field.required
-                      ? "<span>*</span>"
-                      : ""
-                  }
-
-                </label>
-
-
-                <select
-                  name="${esc(field.key)}"
-                  ${
-                    field.required
-                      ? "required"
-                      : ""
-                  }
-                >
-
-                  <option value="">
-                    Pilih...
-                  </option>
-
-                  ${(
-                    field.options ||
-                    []
-                  ).map(
-                    option => `
-
-                      <option
-                        value="${esc(option)}"
-                        ${
-                          String(
-                            value
-                          ) ===
-                          String(
-                            option
-                          )
-                            ? "selected"
-                            : ""
-                        }
-                      >
-                        ${esc(option)}
-                      </option>
-
-                    `
-                  ).join("")}
-
-                </select>
-
-              </div>
-
-            `;
-
-          }
-
-
-          if (
-            field.type ===
-            "textarea"
-          ) {
-
-            return `
-
-              <div class="form-group">
-
-                <label>
-                  ${esc(
-                    field.label
-                  )}
-
-                  ${
-                    field.required
-                      ? "<span>*</span>"
-                      : ""
-                  }
-
-                </label>
-
-
-                <textarea
-                  name="${esc(field.key)}"
-                  placeholder="${esc(
-                    field.placeholder ||
-                    ""
-                  )}"
-                  ${
-                    field.required
-                      ? "required"
-                      : ""
-                  }
-                >${esc(
-                  value
-                )}</textarea>
-
-              </div>
-
-            `;
-
-          }
-
-
-          return `
-
-            <div class="form-group">
-
-              <label>
-
-                ${esc(
-                  field.label
-                )}
-
-                ${
-                  field.required
-                    ? "<span>*</span>"
-                    : ""
-                }
-
-              </label>
-
-
-              <input
-                type="${esc(
-                  field.type ||
-                  "text"
-                )}"
-                name="${esc(
-                  field.key
-                )}"
-                value="${esc(
-                  value
-                )}"
-                placeholder="${esc(
-                  field.placeholder ||
-                  ""
-                )}"
-                ${
-                  field.required
-                    ? "required"
-                    : ""
-                }
-              />
-
-            </div>
-
-          `;
-
-        }
-      ).join("");
-
-
-    const modal =
-      document.createElement(
-        "div"
-      );
-
-    modal.id =
-      "arima-form-modal";
-
-    modal.className =
-      `modal-overlay form-modal ${type}-form-modal`;
-
-
-    modal.innerHTML = `
-
-      <div
-        class="modal form-modal-shell"
-        role="dialog"
-        aria-modal="true"
-      >
-
-        <div class="form-modal-header">
-
-          <div class="form-modal-heading">
-
-            <span class="form-modal-kicker">ARIMA MANAGEMENT SYSTEM</span>
-
-            <h2>
-              ${esc(
-                isEdit
-                  ? config.editTitle
-                  : config.title
-              )}
-            </h2>
-
-            <p>${esc(config.description || "Lengkapi data yang diperlukan.")}</p>
-
+      if (type === "salary" && field.key === "ID_SENSEI") {
+        const senseiRows = Array.isArray(options.senseiRows) ? options.senseiRows : [];
+        return `
+          <div class="form-group form-group-wide payroll-sensei-field">
+            <label for="payroll-sensei-id">Sensei</label>
+            <select id="payroll-sensei-id" name="ID_SENSEI" required>
+              <option value="">Pilih ID Sensei...</option>
+              ${senseiRows.map(row => `
+                <option value="${esc(row.ID_SENSEI)}" ${String(value) === String(row.ID_SENSEI) ? "selected" : ""}>
+                  ${esc(row.ID_SENSEI)} · ${esc(row.NAMA || "Tanpa nama")}
+                </option>
+              `).join("")}
+            </select>
+            <div class="payroll-sensei-preview muted" id="payroll-sensei-preview">Pilih sensei untuk melihat tarif dan ringkasan payroll.</div>
           </div>
+        `;
+      }
 
+      if (type === "billing" && field.key === "ID_SISWA") {
+        const studentRows = Array.isArray(options.studentRows) ? options.studentRows : [];
+        const knownIds = studentRows.map(row => String(row.ID_SISWA || "").trim()).filter(Boolean);
+        const legacyOption = value && !knownIds.includes(String(value))
+          ? `<option value="${esc(value)}" selected>${esc(value)} · Siswa tidak ditemukan</option>`
+          : "";
+        return `
+          <div class="form-group">
+            <label for="billing-student-select">ID Siswa <span>*</span></label>
+            <select id="billing-student-select" name="ID_SISWA" required>
+              <option value="">Pilih siswa...</option>
+              ${studentRows.filter(row => String(row.ID_SISWA || "").trim()).map(row => `
+                <option value="${esc(row.ID_SISWA)}" ${String(value) === String(row.ID_SISWA) ? "selected" : ""}>
+                  ${esc(row.ID_SISWA)} · ${esc(row.NAMA || "Tanpa nama")}
+                </option>
+              `).join("")}
+              ${legacyOption}
+            </select>
+          </div>
+        `;
+      }
 
-          <button
-            type="button"
-            class="modal-close"
-            id="modal-close"
-          >
-            ×
-          </button>
+      if (field.type === "select") {
+        return `
+          <div class="form-group">
+            <label>${esc(field.label)} ${field.required ? "<span>*</span>" : ""}</label>
+            <select name="${esc(field.key)}" ${field.required ? "required" : ""}>
+              <option value="">Pilih...</option>
+              ${(field.options || []).map(option => `
+                <option value="${esc(option)}" ${String(value) === String(option) ? "selected" : ""}>${esc(option)}</option>
+              `).join("")}
+            </select>
+          </div>
+        `;
+      }
 
+      if (field.type === "textarea") {
+        return `
+          <div class="form-group">
+            <label>${esc(field.label)} ${field.required ? "<span>*</span>" : ""}</label>
+            <textarea name="${esc(field.key)}" placeholder="${esc(field.placeholder || "")}" ${field.required ? "required" : ""}>${esc(value)}</textarea>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="form-group">
+          <label>${esc(field.label)} ${field.required ? "<span>*</span>" : ""}</label>
+          <input type="${esc(field.type || "text")}" name="${esc(field.key)}" value="${esc(value)}" placeholder="${esc(field.placeholder || "")}" ${field.required ? "required" : ""} />
         </div>
+      `;
+    }).join("");
 
-
-        <form
-          id="arima-form"
-          class="form-grid form-modal-fields"
-        >
-
-          ${fields}
-
-
-          <div class="modal-footer form-modal-footer">
-
-            <button
-              type="button"
-              class="btn"
-              id="modal-cancel"
-            >
-              Batal
-            </button>
-
-
-            <button
-              type="submit"
-              class="btn btn-primary"
-              id="modal-submit"
-            >
-              ${
-                isEdit
-                  ? "Simpan Perubahan"
-                  : "Simpan"
-              }
-            </button>
-
+    const modal = document.createElement("div");
+    modal.id = "arima-form-modal";
+    modal.className = `modal-overlay form-modal ${type}-form-modal`;
+    modal.innerHTML = `
+      <div class="modal form-modal-shell" role="dialog" aria-modal="true">
+        <div class="form-modal-header">
+          <div class="form-modal-heading">
+            <span class="form-modal-kicker">ARIMA MANAGEMENT SYSTEM</span>
+            <h2>${esc(isEdit ? config.editTitle : config.title)}</h2>
+            <p>${esc(config.description || "Lengkapi data yang diperlukan.")}</p>
           </div>
-
+          <button type="button" class="modal-close" id="modal-close">×</button>
+        </div>
+        <form id="arima-form" class="form-grid form-modal-fields">
+          ${fields}
+          <div class="modal-footer form-modal-footer">
+            <button type="button" class="btn" id="modal-cancel">Batal</button>
+            <button type="submit" class="btn btn-primary" id="modal-submit">${isEdit ? "Simpan Perubahan" : "Simpan"}</button>
+          </div>
         </form>
-
       </div>
-
     `;
 
-
-    document.body.appendChild(
-      modal
-    );
-
+    document.body.appendChild(modal);
 
     function close() {
-
       modal.remove();
-
     }
 
+    qs("#modal-close", modal)?.addEventListener("click", close);
+    qs("#modal-cancel", modal)?.addEventListener("click", close);
+    modal.addEventListener("click", event => { if (event.target === modal) close(); });
 
-    qs(
-      "#modal-close",
-      modal
-    )?.addEventListener(
-      "click",
-      close
-    );
-
-
-    qs(
-      "#modal-cancel",
-      modal
-    )?.addEventListener(
-      "click",
-      close
-    );
-
-
-    modal.addEventListener(
-      "click",
-      event => {
-
-        if (
-          event.target ===
-          modal
-        ) {
-
-          close();
-
-        }
-
-      }
-    );
-
-
-    const form =
-      qs(
-        "#arima-form",
-        modal
-      );
+    const form = qs("#arima-form", modal);
 
     if (type === "salary") {
       const senseiSelect = qs("#payroll-sensei-id", modal);
@@ -4121,208 +2058,78 @@ window.App = (() => {
       refreshPayrollPreview();
     }
 
+    form?.addEventListener("submit", async event => {
+      event.preventDefault();
 
-    form?.addEventListener(
-      "submit",
-      async event => {
-
-        event.preventDefault();
-
-
-        const submit =
-          qs(
-            "#modal-submit",
-            modal
-          );
-
-        if (submit) {
-
-          submit.disabled =
-            true;
-
-          submit.textContent =
-            "Menyimpan...";
-
-        }
-
-
-        try {
-
-          const formData =
-            new FormData(
-              form
-            );
-
-          const payload =
-            {};
-
-
-          formFields.forEach(
-            field => {
-
-              payload[
-                field.key
-              ] =
-                formData.get(
-                  field.key
-                ) || "";
-
-            }
-          );
-
-          if (existing?.__ROW_NUMBER) {
-            payload.__ROW_NUMBER = existing.__ROW_NUMBER;
-          }
-
-
-          let response;
-
-
-          if (isEdit) {
-
-            response =
-              await API.update(
-                type,
-                payload
-              );
-
-          } else {
-
-            response =
-              await API.create(
-                type,
-                payload
-              );
-
-          }
-
-
-          if (
-            response &&
-            response.success === false
-          ) {
-
-            throw new Error(
-              response.message ||
-              "Gagal menyimpan data."
-            );
-
-          }
-
-
-          showToast(
-            isEdit
-              ? "Data berhasil diperbarui."
-              : "Data berhasil ditambahkan."
-          );
-
-
-          close();
-
-          if (type === "billing") {
-            const url = new URL(window.location.href);
-            if (payload.ID_SISWA) url.searchParams.set("studentId", payload.ID_SISWA);
-            window.history.replaceState({}, "", url);
-          }
-
-          await load(
-            type
-          );
-
-
-        } catch (error) {
-
-          showToast(
-            error.message ||
-            "Gagal menyimpan data.",
-            "error"
-          );
-
-
-          if (submit) {
-
-            submit.disabled =
-              false;
-
-            submit.textContent =
-              isEdit
-                ? "Simpan Perubahan"
-                : "Simpan";
-
-          }
-
-        }
-
+      const submit = qs("#modal-submit", modal);
+      if (submit) {
+        submit.disabled = true;
+        submit.textContent = "Menyimpan...";
       }
-    );
 
+      try {
+        const formData = new FormData(form);
+        const payload = {};
+
+        formFields.forEach(field => {
+          payload[field.key] = formData.get(field.key) || "";
+        });
+
+        if (existing?.__ROW_NUMBER) {
+          payload.__ROW_NUMBER = existing.__ROW_NUMBER;
+        }
+
+        let response;
+        if (isEdit) response = await API.update(type, payload);
+        else response = await API.create(type, payload);
+
+        if (response && response.success === false) {
+          throw new Error(response.message || "Gagal menyimpan data.");
+        }
+
+        showToast(isEdit ? "Data berhasil diperbarui." : "Data berhasil ditambahkan.");
+        close();
+
+        if (type === "billing") {
+          const url = new URL(window.location.href);
+          if (payload.ID_SISWA) url.searchParams.set("studentId", payload.ID_SISWA);
+          window.history.replaceState({}, "", url);
+        }
+
+        await load(type);
+      } catch (error) {
+        showToast(error.message || "Gagal menyimpan data.", "error");
+        if (submit) {
+          submit.disabled = false;
+          submit.textContent = isEdit ? "Simpan Perubahan" : "Simpan";
+        }
+      }
+    });
   }
 
-
-  /*
-   * =========================================================
+  /* =========================================================
    * INIT
-   * =========================================================
-   */
+   * ========================================================= */
 
   async function init() {
-
-    console.log(
-      "ARIMA MANAGEMENT SYSTEM initializing..."
-    );
-
-
-    if (
-      !requireAuth()
-    ) {
-
-      return;
-
-    }
-
-
+    console.log("ARIMA MANAGEMENT SYSTEM initializing...");
+    if (!requireAuth()) return;
     renderLayout();
-
-
-    await load(
-      "dashboard"
-    );
-
+    await load("dashboard");
   }
 
-
-  /*
-   * =========================================================
-   * PUBLIC API
-   * =========================================================
-   */
-
   return {
-
     init,
-
     load,
-
     logout,
-
     renderDashboard,
-
     renderStudents,
-
     renderSensei,
-
     renderAttendance,
-
     renderBilling,
-
     renderFinance,
-
     renderSalary,
-
     renderReports,
-
     renderSettings
-
   };
-
 })();

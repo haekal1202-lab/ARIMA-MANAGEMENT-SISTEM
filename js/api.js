@@ -251,6 +251,22 @@ window.API = (() => {
     return call(action, payload);
   }
 
+    async function billingDelete(payload) {
+    return call("billingDelete", payload);
+  }
+
+  async function paymentDelete(payload) {
+    return call("paymentDelete", payload);
+  }
+
+  async function salaryDelete(payload) {
+    return call("salaryDelete", payload);
+  }
+
+  async function salaryEmail(payload) {
+    return call("salaryEmail", payload);
+  }
+  
   return {
     call,
     login,
@@ -294,5 +310,14 @@ window.API = (() => {
     getToken,
     saveToken,
     clearToken
+
+    billingDelete,
+
+    paymentDelete,
+    
+    salaryDelete,
+    
+    salaryEmail,
+
   };
 })();

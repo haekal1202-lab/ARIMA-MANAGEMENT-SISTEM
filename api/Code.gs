@@ -12,21 +12,41 @@
 const ARIMA = Object.freeze({
   SPREADSHEET_ID: '1hsfZFAS24iI6w2dQRONgOhg2j7WCa-_OcJRFG9zDKOw',
   TIMEZONE: 'Asia/Jakarta',
-  DEFAULT_SECRET: 'ARIMA_SECRET_2026'
+  TOKEN_TTL_MS: 60 * 60 * 1000,
+  LOGIN_MAX_FAILS: 5,
+  LOGIN_LOCK_SECONDS: 15 * 60
 });
 
 function doGet() {
   return json_(health_());
 }
 
+const WRITE_ACTIONS_ = Object.freeze([
+  'assignStudentIds', 'assignSenseiIds', 'selfAttendance', 'generateUserIds',
+  'userCreate', 'userReset', 'userDelete',
+  'studentSave', 'studentDelete', 'senseiSave', 'senseiDelete',
+  'attendanceSave', 'billingSave', 'billingDelete',
+  'paymentSave', 'paymentDelete',
+  'financeSave', 'salarySave', 'salaryDelete', 'salaryEmail'
+]);
+
 function doPost(e) {
+  let lock = null;
   try {
     const body = JSON.parse(String(e && e.postData && e.postData.contents ? e.postData.contents : '{}'));
     const action = body && body.action ? body.action : 'health';
     const payload = body && body.payload ? body.payload : {};
+    if (WRITE_ACTIONS_.indexOf(String(action)) >= 0) {
+      lock = LockService.getScriptLock();
+      lock.waitLock(20000);
+    }
     return json_(route_(action, payload, body && body.token));
   } catch (err) {
     return json_({ success: false, message: String(err && err.message ? err.message : err) });
+  } finally {
+    if (lock) {
+      try { lock.releaseLock(); } catch (ignore) { /* lock already released */ }
+    }
   }
 }
 
@@ -39,8 +59,12 @@ function route_(action, p, token) {
     case 'logout':
       return logout_();
     case 'dashboard':
+      const dashboardAccessError = roleAccessError_(token, ['ADMIN', 'SENSEI', 'SISWA']);
+      if (dashboardAccessError) return dashboardAccessError;
       return dashboard_();
     case 'students':
+      const studentsAccessError = roleAccessError_(token, ['ADMIN']);
+      if (studentsAccessError) return studentsAccessError;
       return listSheet_('STUDENTS');
     case 'assignStudentIds':
       const assignStudentIdsAccessError = accountAccessError_(token);
@@ -51,6 +75,8 @@ function route_(action, p, token) {
       if (assignSenseiIdsAccessError) return assignSenseiIdsAccessError;
       return assignMissingSenseiIds_();
     case 'sensei':
+      const senseiAccessError = roleAccessError_(token, ['ADMIN']);
+      if (senseiAccessError) return senseiAccessError;
       return senseiList_(token);
     case 'attendance':
       const attendanceAccessError = accountAccessError_(token);
@@ -105,12 +131,20 @@ function route_(action, p, token) {
       if (userDeleteAccessError) return userDeleteAccessError;
       return deleteAccount_(p, token);
     case 'studentSave':
+      const studentSaveAccessError = roleAccessError_(token, ['ADMIN']);
+      if (studentSaveAccessError) return studentSaveAccessError;
       return saveSheetRecord_('STUDENTS', 'ID_SISWA', p);
     case 'studentDelete':
+      const studentDeleteAccessError = roleAccessError_(token, ['ADMIN']);
+      if (studentDeleteAccessError) return studentDeleteAccessError;
       return deleteSheetRecord_('STUDENTS', 'ID_SISWA', p);
     case 'senseiSave':
+      const senseiSaveAccessError = roleAccessError_(token, ['ADMIN']);
+      if (senseiSaveAccessError) return senseiSaveAccessError;
       return saveSenseiRecord_(p, token);
     case 'senseiDelete':
+      const senseiDeleteAccessError = roleAccessError_(token, ['ADMIN']);
+      if (senseiDeleteAccessError) return senseiDeleteAccessError;
       return deleteSheetRecord_('SENSEI', 'ID_SENSEI', p);
     case 'attendanceSave':
       const attendanceSaveAccessError = accountAccessError_(token);
@@ -124,6 +158,22 @@ function route_(action, p, token) {
       const paymentSaveAccessError = accountAccessError_(token);
       if (paymentSaveAccessError) return paymentSaveAccessError;
       return saveSheetRecord_('PAYMENTS', 'PAYMENT_ID', p);
+    case 'paymentDelete':
+      const paymentDeleteAccessError = accountAccessError_(token);
+      if (paymentDeleteAccessError) return paymentDeleteAccessError;
+      return deletePaymentRecord_(p);
+    case 'billingDelete':
+      const billingDeleteAccessError = accountAccessError_(token);
+      if (billingDeleteAccessError) return billingDeleteAccessError;
+      return deleteBillingRecord_(p);
+    case 'salaryDelete':
+      const salaryDeleteAccessError = salaryAccessError_(token);
+      if (salaryDeleteAccessError) return salaryDeleteAccessError;
+      return deleteSheetRecord_('SALARY', 'SALARY_ID', p);
+    case 'salaryEmail':
+      const salaryEmailAccessError = salaryAccessError_(token);
+      if (salaryEmailAccessError) return salaryEmailAccessError;
+      return emailSalarySlip_(p);
     case 'financeSave':
       const financeSaveAccessError = accountAccessError_(token);
       if (financeSaveAccessError) return financeSaveAccessError;
@@ -166,8 +216,8 @@ function tokenUser_(token) {
 
   try {
     const payloadText = Utilities.newBlob(Utilities.base64Decode(parts[0])).getDataAsString('UTF-8');
-    const expectedSignature = toBase64Url_(Utilities.computeHmacSha256Signature(payloadText, buildAuthSecret_()));
-    if (parts[1] !== expectedSignature) return null;
+    const expectedSignature = toBase64Url_(Utilities.computeHmacSha256Signature(payloadText, buildTokenSecret_()));
+    if (!safeEqual_(parts[1], expectedSignature)) return null;
     const payload = JSON.parse(payloadText);
     if (!payload.id || Number(payload.exp) <= Date.now()) return null;
     return payload;
@@ -183,6 +233,18 @@ function isAdminToken_(token) {
 
 function adminOnlyResponse_() {
   return { success: false, code: 'FORBIDDEN', message: 'Data payroll hanya dapat diakses oleh admin.' };
+}
+
+function roleAccessError_(token, allowedRoles) {
+  const user = tokenUser_(token);
+  if (!user) {
+    return { success: false, code: 'AUTH_REQUIRED', message: 'Sesi login perlu diperbarui. Silakan login kembali.' };
+  }
+  const role = String(user.role || '').trim().toUpperCase();
+  if (allowedRoles.indexOf(role) < 0) {
+    return { success: false, code: 'FORBIDDEN', message: 'Anda tidak memiliki akses untuk tindakan ini.' };
+  }
+  return null;
 }
 
 function accountAccessError_(token) {
@@ -484,13 +546,27 @@ function attendanceForToday_(actorId, actorType) {
     const index = findColumnIndex_(headers, [field]);
     return index < 0 ? '' : row[index];
   };
-  return {
+  const startMinutes = clockMinutes_(get('JAM_MASUK'));
+  const endMinutes = clockMinutes_(get('JAM_KELUAR'));
+  const result = {
     ATTENDANCE_ID: get('ATTENDANCE_ID'),
-    JAM_MASUK: get('JAM_MASUK'),
-    JAM_KELUAR: get('JAM_KELUAR'),
+    TANGGAL: today,
+    JAM_MASUK: clockLabel_(startMinutes),
+    JAM_KELUAR: clockLabel_(endMinutes),
     STATUS: get('STATUS'),
     CATATAN: get('CATATAN')
   };
+  if (actorType === 'SENSEI') {
+    const paid = paidTeachingMinutes_(startMinutes, endMinutes);
+    result.DURASI_MENIT = paid;
+    result.JP = paid === null ? null : Math.round((paid / 45) * 100) / 100;
+  }
+  return result;
+}
+
+function clockLabel_(minutes) {
+  if (minutes === null || minutes === undefined) return '';
+  return ('0' + Math.floor(minutes / 60)).slice(-2) + ':' + ('0' + (minutes % 60)).slice(-2);
 }
 
 function attendanceDateKey_(value) {
@@ -710,14 +786,48 @@ function saveSenseiRecord_(payload, token) {
   return saveSheetRecord_('SENSEI', 'ID_SENSEI', record);
 }
 
+function randomSecret_() {
+  return Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid();
+}
+
+/**
+ * Secret untuk menandatangani token sesi. Dibuat acak sekali saja dan disimpan
+ * di Script Properties; tidak pernah ada di kode sumber.
+ */
+function buildTokenSecret_() {
+  const props = PropertiesService.getScriptProperties();
+  let secret = props.getProperty('ARIMA_TOKEN_SECRET');
+  if (!secret) {
+    secret = randomSecret_();
+    props.setProperty('ARIMA_TOKEN_SECRET', secret);
+  }
+  return secret;
+}
+
+/**
+ * Secret untuk hash password. Deployment lama sudah menyimpan nilainya di
+ * ARIMA_AUTH_SECRET sehingga password lama tetap valid. Deployment baru
+ * mendapat nilai acak, bukan konstanta dari kode.
+ */
 function buildAuthSecret_() {
   const props = PropertiesService.getScriptProperties();
   let secret = props.getProperty('ARIMA_AUTH_SECRET');
   if (!secret) {
-    secret = ARIMA.DEFAULT_SECRET;
+    secret = randomSecret_();
     props.setProperty('ARIMA_AUTH_SECRET', secret);
   }
   return secret;
+}
+
+function safeEqual_(a, b) {
+  const x = String(a || '');
+  const y = String(b || '');
+  let diff = x.length ^ y.length;
+  const length = Math.max(x.length, y.length);
+  for (let index = 0; index < length; index += 1) {
+    diff |= (x.charCodeAt(index) || 0) ^ (y.charCodeAt(index) || 0);
+  }
+  return diff === 0;
 }
 
 function toHex_(bytes) {
@@ -786,19 +896,25 @@ function verifyPassword_(password, user, secret) {
   const candidates = passwordHashCandidates_(password, salt, secret);
   const normalizedStored = storedHash.replace(/\s+/g, '').trim();
 
-  return candidates.some(function (candidate) {
-    return String(candidate).replace(/\s+/g, '').toLowerCase() === normalizedStored.replace(/\s+/g, '').toLowerCase();
+  const target = normalizedStored.toLowerCase();
+  let matched = false;
+  candidates.forEach(function (candidate) {
+    if (safeEqual_(String(candidate).replace(/\s+/g, '').toLowerCase(), target)) matched = true;
   });
+  return matched;
 }
 
 function initialAdminUser_() {
   const secret = buildAuthSecret_();
+  const password = Utilities.getUuid().replace(/-/g, '').slice(0, 12);
+  const salt = Utilities.getUuid();
   return {
     id: 'ADMIN001',
     name: 'Administrator',
     role: 'ADMIN',
-    salt: 'admin001',
-    passwordHash: hashPassword_('admin123', 'admin001', secret)
+    salt: salt,
+    password: password,
+    passwordHash: hashPassword_(password, salt, secret)
   };
 }
 
@@ -809,7 +925,7 @@ function createInitialAdmin_() {
   if (existing.length) return { success: true, created: false, message: 'USERS sudah memiliki data.' };
   const user = initialAdminUser_();
   sheet.appendRow([user.id, user.name, user.role, user.salt, user.passwordHash]);
-  return { success: true, created: true, userId: user.id, message: 'Admin awal berhasil dibuat.' };
+  return { success: true, created: true, userId: user.id, password: user.password, message: 'Admin awal berhasil dibuat. Catat password ini lalu segera ganti.' };
 }
 
 function ensureUsersSheet_() {
@@ -901,22 +1017,40 @@ function findUserById_(userId) {
   }) || null;
 }
 
+function loginThrottleKey_(id) {
+  return 'login_fail_' + String(id || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 40);
+}
+
+function loginFailCount_(id) {
+  return Number(CacheService.getScriptCache().get(loginThrottleKey_(id)) || 0);
+}
+
+function recordLoginFailure_(id) {
+  const cache = CacheService.getScriptCache();
+  const key = loginThrottleKey_(id);
+  cache.put(key, String(Number(cache.get(key) || 0) + 1), ARIMA.LOGIN_LOCK_SECONDS);
+}
+
 function login_(p) {
   const id = String(p && p.userId ? p.userId : '').trim();
   const password = String(p && p.password ? p.password : '');
+  const invalid = { success: false, message: 'ID atau password salah.' };
 
   if (!id) return { success: false, message: 'ID wajib diisi.' };
   if (!password) return { success: false, message: 'Password wajib diisi.' };
 
-  const user = findUserById_(id);
-  if (!user) {
-    return { success: false, message: 'User tidak ditemukan.' };
+  if (loginFailCount_(id) >= ARIMA.LOGIN_MAX_FAILS) {
+    return { success: false, code: 'TOO_MANY_ATTEMPTS', message: 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.' };
   }
 
+  const user = findUserById_(id);
   const secret = buildAuthSecret_();
-  if (!verifyPassword_(password, user, secret)) {
-    return { success: false, message: 'Password salah.' };
+  if (!user || !verifyPassword_(password, user, secret)) {
+    recordLoginFailure_(id);
+    return invalid;
   }
+
+  CacheService.getScriptCache().remove(loginThrottleKey_(id));
 
   const safeUser = {
     id: String(user.id || id),
@@ -928,11 +1062,11 @@ function login_(p) {
     id: safeUser.id,
     name: safeUser.name,
     role: safeUser.role,
-    exp: Date.now() + (60 * 60 * 1000)
+    exp: Date.now() + ARIMA.TOKEN_TTL_MS
   });
 
   const token = Utilities.base64Encode(tokenPayload) + '.' + toBase64Url_(
-    Utilities.computeHmacSha256Signature(tokenPayload, buildAuthSecret_())
+    Utilities.computeHmacSha256Signature(tokenPayload, buildTokenSecret_())
   );
 
   return {
@@ -1446,10 +1580,218 @@ function saveSheetRecord_(sheetName, keyField, payload) {
     rowNumber = sh.getLastRow();
   }
 
+  // Auto-sync PAYMENTS -> FINANCE
+  if (sheetName === 'PAYMENTS') {
+    const paymentObj = {};
+    headers.forEach((header, idx) => { paymentObj[header] = row[idx]; });
+    paymentObj.PAYMENT_ID = String(row[keyIndex] || finalKey);
+    const syncResult = syncPaymentToFinance_(paymentObj);
+    if (!syncResult.success) {
+      // Data pembayaran sudah tersimpan; log warning tapi jangan gagalkan simpan
+      console.warn('Gagal sync pembayaran ke FINANCE:', syncResult.message);
+    }
+  }
+
   return {
     success: true,
     message: isUpdate ? 'Data berhasil diperbarui.' : 'Data berhasil ditambahkan.',
     data: { [keyField]: row[keyIndex], __ROW_NUMBER: rowNumber }
+  };
+}
+
+/* =========================================================
+ * AUTO-SYNC PEMBAYARAN KE FINANCE
+ * ========================================================= */
+
+function syncPaymentToFinance_(payment) {
+  const sheetResult = financeSheet_();
+  if (!sheetResult.success) return { success: false, message: sheetResult.message };
+
+  const financeRows = listSheet_('FINANCE');
+  if (!financeRows.success) return financeRows;
+
+  const paymentId = String(payment.PAYMENT_ID || '').trim();
+  if (!paymentId) return { success: false, message: 'PAYMENT_ID kosong, tidak dapat sync ke FINANCE.' };
+
+  // Hindari double-count: cek apakah sudah ada FINANCE dengan REFERENCE_NO = PAYMENT_ID
+  const existing = (financeRows.data || []).find(row =>
+    String(row.REFERENCE_NO || '').trim().toUpperCase() === paymentId.toUpperCase()
+  );
+  if (existing) {
+    return { success: true, skipped: true, message: 'Mutasi keuangan untuk pembayaran ini sudah tercatat.' };
+  }
+
+  // Ambil info tagihan untuk kategori
+  const billingSheet = ss_().getSheetByName('BILLING');
+  let billingCategory = '';
+  if (billingSheet) {
+    const billingValues = billingSheet.getDataRange().getValues();
+    if (billingValues.length > 1) {
+      const headers = billingValues[0].map(String);
+      const idIdx = findColumnIndex_(headers, ['BILLING_ID']);
+      const catIdx = findColumnIndex_(headers, ['CATEGORY']);
+      if (idIdx >= 0 && catIdx >= 0) {
+        const found = billingValues.slice(1).find(row =>
+          String(row[idIdx] || '').trim() === String(payment.BILLING_ID || '').trim()
+        );
+        if (found) billingCategory = String(found[catIdx] || '').trim();
+      }
+    }
+  }
+
+  const transactionId = 'FIN-' + paymentId;
+  const today = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyy-MM-dd');
+
+  const financeRecord = {
+    TRANSACTION_ID: transactionId,
+    DATE: String(payment.PAYMENT_DATE || today).slice(0, 10) || today,
+    TYPE: 'PEMASUKAN',
+    CATEGORY: billingCategory || 'SPP',
+    DESCRIPTION: 'Pembayaran ' + paymentId + (payment.BILLING_ID ? ' untuk tagihan ' + payment.BILLING_ID : ''),
+    AMOUNT: Number(payment.AMOUNT || 0),
+    PAYMENT_METHOD: String(payment.PAYMENT_METHOD || 'LAINNYA'),
+    REFERENCE_NO: paymentId,
+    NOTES: String(payment.NOTES || ''),
+    __MODE: 'create'
+  };
+
+  return saveSheetRecord_('FINANCE', 'TRANSACTION_ID', financeRecord);
+}
+
+/* =========================================================
+ * VALIDASI HAPUS TAGIHAN (tolak jika ada pembayaran)
+ * ========================================================= */
+
+function deleteBillingRecord_(payload) {
+  const record = payload && typeof payload === 'object' ? payload : {};
+  const billingId = String(record.BILLING_ID || '').trim();
+  if (!billingId) return { success: false, message: 'BILLING_ID wajib diisi.' };
+
+  const paymentsSheet = ss_().getSheetByName('PAYMENTS');
+  if (paymentsSheet && paymentsSheet.getLastRow() > 1) {
+    const values = paymentsSheet.getDataRange().getValues();
+    const headers = values[0].map(String);
+    const billingIdx = findColumnIndex_(headers, ['BILLING_ID']);
+    if (billingIdx >= 0) {
+      const relatedPayments = values.slice(1).filter(row =>
+        String(row[billingIdx] || '').trim() === billingId
+      );
+      if (relatedPayments.length) {
+        return {
+          success: false,
+          message: 'Tagihan tidak dapat dihapus karena sudah memiliki ' + relatedPayments.length +
+                   ' pembayaran tercatat. Hapus pembayaran terkait terlebih dahulu jika memang diperlukan.'
+        };
+      }
+    }
+  }
+
+  return deleteSheetRecord_('BILLING', 'BILLING_ID', payload);
+}
+
+/* =========================================================
+ * HAPUS PEMBAYARAN + HAPUS FINANCE TERKAIT
+ * ========================================================= */
+
+function deletePaymentRecord_(payload) {
+  const record = payload && typeof payload === 'object' ? payload : {};
+  const paymentId = String(record.PAYMENT_ID || '').trim();
+  if (!paymentId) return { success: false, message: 'PAYMENT_ID wajib diisi.' };
+
+  // Hapus dulu entri FINANCE yang REFERENCE_NO-nya = PAYMENT_ID
+  const financeSheet = ss_().getSheetByName('FINANCE');
+  if (financeSheet && financeSheet.getLastRow() > 1) {
+    const values = financeSheet.getDataRange().getValues();
+    const headers = values[0].map(String);
+    const refIdx = findColumnIndex_(headers, ['REFERENCE_NO']);
+    if (refIdx >= 0) {
+      for (let i = values.length - 1; i >= 1; i -= 1) {
+        if (String(values[i][refIdx] || '').trim().toUpperCase() === paymentId.toUpperCase()) {
+          financeSheet.deleteRow(i + 1);
+        }
+      }
+    }
+  }
+
+  return deleteSheetRecord_('PAYMENTS', 'PAYMENT_ID', payload);
+}
+
+/* =========================================================
+ * KIRIM SLIP GAJI SENSEI VIA EMAIL
+ * ========================================================= */
+
+function emailSalarySlip_(payload) {
+  const record = payload && typeof payload === 'object' ? payload : {};
+  const salaryId = String(record.SALARY_ID || '').trim();
+  const pdfBase64 = String(record.pdfBase64 || '').trim();
+
+  if (!salaryId) return { success: false, message: 'SALARY_ID wajib diisi.' };
+  if (!pdfBase64) return { success: false, message: 'File PDF slip gaji tidak tersedia.' };
+
+  const salarySheet = ss_().getSheetByName('SALARY');
+  if (!salarySheet) return { success: false, message: 'Sheet SALARY tidak ditemukan.' };
+  const salaryValues = salarySheet.getDataRange().getValues();
+  if (salaryValues.length < 2) return { success: false, message: 'Data payroll belum tersedia.' };
+  const salaryHeaders = salaryValues[0].map(String);
+  const salaryIdIdx = findColumnIndex_(salaryHeaders, ['SALARY_ID']);
+  const salaryRow = salaryValues.slice(1).find(row =>
+    String(row[salaryIdIdx] || '').trim() === salaryId
+  );
+  if (!salaryRow) return { success: false, message: 'Data payroll tidak ditemukan.' };
+
+  const salaryObj = {};
+  salaryHeaders.forEach((header, idx) => { salaryObj[header] = salaryRow[idx]; });
+
+  const senseiSheet = ss_().getSheetByName('SENSEI');
+  if (!senseiSheet) return { success: false, message: 'Sheet SENSEI tidak ditemukan.' };
+  const senseiValues = senseiSheet.getDataRange().getValues();
+  const senseiHeaders = senseiValues[0].map(String);
+  const senseiIdIdx = findColumnIndex_(senseiHeaders, ['ID_SENSEI']);
+  const senseiNameIdx = findColumnIndex_(senseiHeaders, ['NAMA']);
+  const senseiEmailIdx = findColumnIndex_(senseiHeaders, ['EMAIL']);
+  const senseiRow = senseiValues.slice(1).find(row =>
+    String(row[senseiIdIdx] || '').trim() === String(salaryObj.ID_SENSEI || '').trim()
+  );
+  if (!senseiRow) return { success: false, message: 'Data sensei tidak ditemukan.' };
+
+  const senseiName = String(senseiRow[senseiNameIdx] || 'Sensei');
+  const senseiEmail = String(senseiRow[senseiEmailIdx] || '').trim();
+  if (!senseiEmail || senseiEmail.indexOf('@') < 0) {
+    return { success: false, message: 'Email sensei belum diisi atau tidak valid di data master.' };
+  }
+
+  const period = String(salaryObj.PERIOD || '').slice(0, 7);
+  const subject = 'Slip Gaji ' + period + ' - LPKS Arima Persada';
+  const bodyText = 'Yth. ' + senseiName + ',\n\n' +
+    'Terlampir slip gaji periode ' + period + '.\n\n' +
+    'Terima kasih.\nLPKS Arima Persada';
+  const bodyHtml = '<p>Yth. <strong>' + senseiName + '</strong>,</p>' +
+    '<p>Terlampir slip gaji periode <strong>' + period + '</strong>.</p>' +
+    '<p>Terima kasih.<br>LPKS Arima Persada</p>';
+
+  const fileName = 'slip-gaji-' + salaryId + '.pdf';
+
+  try {
+    MailApp.sendEmail({
+      to: senseiEmail,
+      subject: subject,
+      body: bodyText,
+      htmlBody: bodyHtml,
+      name: 'LPKS Arima Persada',
+      attachments: [Utilities.newBlob(
+        Utilities.base64Decode(pdfBase64),
+        'application/pdf',
+        fileName
+      )]
+    });
+  } catch (err) {
+    return { success: false, message: 'Gagal mengirim email: ' + (err && err.message ? err.message : err) };
+  }
+
+  return {
+    success: true,
+    message: 'Slip gaji berhasil dikirim ke ' + senseiEmail + '.',
+    data: { email: senseiEmail, salaryId: salaryId }
   };
 }
 
@@ -1553,14 +1895,9 @@ function countActive_(sheetName, statusCol, statusValue) {
 
 function setupInitialAdmin() {
   const result = createInitialAdmin_();
+  // Password acak hanya ditampilkan di log eksekusi ini, tidak disimpan di mana pun.
   Logger.log(JSON.stringify(result));
-  return result;
-}
-
-function testLogin() {
-  const result = login_({ userId: 'ADMIN001', password: 'admin123' });
-  Logger.log(JSON.stringify(result));
-  return result;
+  return result.created ? { success: true, created: true, message: 'Lihat View > Logs untuk password awal.' } : result;
 }
 
 function testSpreadsheetConnection() {
