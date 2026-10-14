@@ -497,13 +497,6 @@ window.ArimaPdf = (() => {
     drawStatusRow(pdf, MARGIN, y, "Status tagihan: ", invoice.STATUS || "-");
     y += 6;
 
-    // Penerima
-    if (invoice.PENERIMA) {
-      drawStatusRow(pdf, MARGIN, y, "Penerima: ", invoice.PENERIMA);
-      y += 6;
-    }
-    y += 6;
-
     // Terbilang
     pdf.setFont("helvetica", "italic");
     pdf.setFontSize(9);
