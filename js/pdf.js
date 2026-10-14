@@ -633,6 +633,7 @@ window.ArimaPdf = (() => {
     // Rincian perhitungan
     const baseAmount = Number(salaryRow.BASE_AMOUNT || 0);
     const bonus = Number(salaryRow.BONUS || 0);
+    const transport = Number(salaryRow.TRANSPORT || 0);
     const deduction = Number(salaryRow.DEDUCTION || 0);
     const netSalary = Number(salaryRow.NET_SALARY || 0);
     const rate = Number((senseiRow && senseiRow.TARIF_PER_JAM) || 0);
@@ -646,6 +647,7 @@ window.ArimaPdf = (() => {
         [`Gaji pokok (${formatNumber(jp)} JP × ${formatRupiah(rate)})`, formatRupiah(baseAmount)],
         ["Jumlah pertemuan tercatat", `${formatNumber(meetings)} pertemuan`],
         ["Bonus", formatRupiah(bonus)],
+        ["Transport", formatRupiah(transport)],
         ["Potongan", "- " + formatRupiah(deduction)]
       ],
       [inner * 0.65, inner * 0.35]
