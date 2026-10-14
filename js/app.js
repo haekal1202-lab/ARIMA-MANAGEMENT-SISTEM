@@ -143,7 +143,17 @@ window.App = (() => {
         { key: "PAYMENT_DATE", label: "Tanggal Pembayaran", type: "date", required: true },
         { key: "AMOUNT", label: "Jumlah Pembayaran", type: "number", required: true },
         { key: "PAYMENT_METHOD", label: "Metode Pembayaran", type: "select", required: true, options: ["CASH", "TRANSFER", "QRIS", "LAINNYA"] },
-        { key: "REFERENCE_NO", label: "No. Referensi", type: "text", required: false },
+                {
+          key: "REFERENCE_NO",
+          label: "Penerima",
+          type: "select",
+          required: false,
+          options: [
+            "Suwardi, S.T. - Direktur",
+            "Rachmat Septiadi Ujianto - Penanggung Jawab",
+            "M Irvan Haekal - Administrasi"
+          ]
+        },
         { key: "NOTES", label: "Catatan", type: "textarea", required: false }
       ]
     },
