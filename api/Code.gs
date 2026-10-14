@@ -419,12 +419,22 @@ function accountMasterPerson_(role, masterId, accountName) {
   };
 }
 
+/**
+ * Upload foto absensi. Nama file: {ID}_{TANGGAL}_{TYPE}_{timestamp}.jpg
+ * Contoh: IR3948_2026-10-14_KELAS_081523.jpg
+ * Disimpan di subfolder per bulan: ARIMA_ATTENDANCE_PHOTOS/2026-10/
+ */
 function uploadAttendancePhoto_(payload) {
   const data = payload && typeof payload === 'object' ? payload : {};
-  const type = String(data.type || 'PHOTO').toUpperCase();
+  const type = String(data.type || 'PHOTO').toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
   const base64 = String(data.base64 || '').trim();
   const mimeType = String(data.mimeType || 'image/jpeg');
-  const fileName = String(data.fileName || (type + '.jpg')).replace(/[^A-Za-z0-9_.-]/g, '_');
+
+  // Ambil ID & tanggal dari payload
+  const actorId = String(data.actorId || '').trim().replace(/[^A-Za-z0-9_-]/g, '_') || 'UNKNOWN';
+  const tanggal = String(data.tanggal || '').trim().slice(0, 10).replace(/[^0-9-]/g, '') ||
+    Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyy-MM-dd');
+
   if (!base64) return { success: false, message: 'Data foto kosong.' };
 
   try {
@@ -433,15 +443,22 @@ function uploadAttendancePhoto_(payload) {
     const found = DriveApp.getFoldersByName(folderName);
     folder = found.hasNext() ? found.next() : DriveApp.createFolder(folderName);
 
-    const timestamp = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyyMMdd-HHmmss');
-    const fullName = type + '_' + timestamp + '_' + fileName;
+    // Subfolder per bulan: YYYY-MM
+    const monthKey = tanggal.slice(0, 7);
+    let monthFolder;
+    const monthSearch = folder.getFoldersByName(monthKey);
+    monthFolder = monthSearch.hasNext() ? monthSearch.next() : folder.createFolder(monthKey);
+
+    const timestamp = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'HHmmss');
+    // Format: IR3948_2026-10-14_KELAS_081523.jpg
+    const fullName = actorId + '_' + tanggal + '_' + type + '_' + timestamp + '.jpg';
 
     const blob = Utilities.newBlob(Utilities.base64Decode(base64), mimeType, fullName);
-    const file = folder.createFile(blob);
+    const file = monthFolder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     const url = 'https://drive.google.com/uc?export=view&id=' + file.getId();
-    return { success: true, message: 'Foto berhasil diunggah.', data: { url: url, fileId: file.getId() } };
+    return { success: true, message: 'Foto berhasil diunggah.', data: { url: url, fileId: file.getId(), fileName: fullName } };
   } catch (err) {
     return { success: false, message: 'Gagal mengunggah foto: ' + (err && err.message ? err.message : err) };
   }
@@ -585,7 +602,6 @@ function attendanceForToday_(actorId, actorType) {
     CATATAN: get('CATATAN')
   };
   if (actorType === 'SENSEI') {
-    // Baca istirahat dari JSON, fallback ke single
     let breaksArr = [];
     const jsonRaw = get('ISTIRAHAT_JSON');
     if (jsonRaw) {
@@ -648,7 +664,6 @@ function saveOwnAttendance_(payload, token) {
 
   // Auto-create kolom baru jika belum ada
   if (ensureAttendanceColumns_(sheet, headers).length) {
-    // Refresh values setelah menambah kolom
     values.length = 0;
     const newValues = sheet.getDataRange().getValues();
     values.push.apply(values, newValues);
@@ -674,38 +689,42 @@ function saveOwnAttendance_(payload, token) {
     }
   }
 
+  // Baca jam dari existing row dengan parser yang benar (handle Date object & number)
+  const existingStartMinutes = existing ? clockMinutes_(existing.row[startIndex]) : null;
+  const existingEndMinutes = existing ? clockMinutes_(existing.row[endIndex]) : null;
+
   const attendance = {
     ACTOR_ID: actorId,
     ACTOR_TYPE: actorType,
     SESSION_ID: '',
     CLASS_ID: '',
     TANGGAL: today,
-    JAM_MASUK: existing ? String(existing.row[startIndex] || start) : start,
-    JAM_KELUAR: end || (existing ? String(existing.row[endIndex] || '') : ''),
+    JAM_MASUK: existingStartMinutes !== null
+      ? clockLabel_(existingStartMinutes)
+      : start,
+    JAM_KELUAR: end
+      ? end
+      : (existingEndMinutes !== null ? clockLabel_(existingEndMinutes) : ''),
     STATUS: status,
     CATATAN: String(record.CATATAN || '')
   };
   if (actorType === 'SENSEI') {
-    // Simpan istirahat sebagai JSON array
     let breaksArr = [];
     if (Array.isArray(record.ISTIRAHAT)) {
       breaksArr = record.ISTIRAHAT;
     } else if (record.ISTIRAHAT_JSON) {
       try { breaksArr = JSON.parse(record.ISTIRAHAT_JSON); } catch (e) { breaksArr = []; }
     }
-    // Support single break (kompatibilitas lama)
     if (!breaksArr.length && (record.ISTIRAHAT_MULAI || record.ISTIRAHAT_SELESAI)) {
       if (record.ISTIRAHAT_MULAI && record.ISTIRAHAT_SELESAI) {
         breaksArr.push([record.ISTIRAHAT_MULAI, record.ISTIRAHAT_SELESAI]);
       }
     }
-    // Validasi & bersihkan
     breaksArr = breaksArr.filter(function (b) {
       return Array.isArray(b) && b[0] && b[1] && clockMinutes_(b[0]) !== null && clockMinutes_(b[1]) !== null;
     });
 
     attendance.ISTIRAHAT_JSON = JSON.stringify(breaksArr);
-    // Tetap simpan single break untuk backward compat
     attendance.ISTIRAHAT_MULAI = breaksArr[0] ? breaksArr[0][0] : '';
     attendance.ISTIRAHAT_SELESAI = breaksArr[0] ? breaksArr[0][1] : '';
     attendance.FOTO_KELAS_URL = String(record.FOTO_KELAS_URL || '');
@@ -1430,6 +1449,28 @@ function clockMinutes_(value) {
   if (typeof value === 'number' && value >= 0 && value < 1) return Math.round(value * 1440);
 
   const text = String(value || '').trim();
+
+  // ▼ TAMBAHKAN BARIS INI: handle string desimal "0.3333"
+  if (/^0?\.\d+$/.test(text)) {
+    const num = Number(text);
+    if (num >= 0 && num < 1) return Math.round(num * 1440);
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}T/.test(text)) {
+    const timestamp = new Date(text);
+    if (!Number.isNaN(timestamp.getTime())) {
+      return clockMinutes_(Utilities.formatDate(timestamp, ARIMA.TIMEZONE, 'HH:mm'));
+    }
+  }
+  const match = text.match(/(?:T|^)(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  return hour <= 23 && minute <= 59 ? hour * 60 + minute : null;
+}
+  if (typeof value === 'number' && value >= 0 && value < 1) return Math.round(value * 1440);
+
+  const text = String(value || '').trim();
   if (/^\d{4}-\d{2}-\d{2}T/.test(text)) {
     const timestamp = new Date(text);
     if (!Number.isNaN(timestamp.getTime())) {
@@ -1457,17 +1498,15 @@ function paidTeachingMinutes_(start, end, breaksInput) {
   const endAt = end > start ? end : end + 1440;
   let paidMinutes = endAt - startAt;
 
-  // Normalisasi breaks: bisa array of array, atau single array, atau kosong
   let breaks = [];
   if (Array.isArray(breaksInput)) {
     if (breaksInput.length && Array.isArray(breaksInput[0])) {
-      breaks = breaksInput;  // [[mulai, selesai], ...]
+      breaks = breaksInput;
     } else if (breaksInput.length === 2) {
-      breaks = [breaksInput];  // [mulai, selesai]
+      breaks = [breaksInput];
     }
   }
 
-  // Konversi tiap break jadi menit
   const breakRanges = [];
   breaks.forEach(function (b) {
     if (!Array.isArray(b) || b.length < 2) return;
@@ -1477,7 +1516,6 @@ function paidTeachingMinutes_(start, end, breaksInput) {
     breakRanges.push([bs, be]);
   });
 
-  // Kurangi overlap istirahat dari durasi
   for (let dayStart = Math.floor(startAt / 1440) * 1440; dayStart < endAt; dayStart += 1440) {
     breakRanges.forEach(function (pause) {
       const be = pause[1] > pause[0] ? pause[1] : pause[1] + 1440;
@@ -1620,6 +1658,7 @@ function saveSheetRecord_(sheetName, keyField, payload) {
     }
   }
 
+  // Validasi absensi sensei (jam + istirahat)
   if (sheetName === 'ATTENDANCE' && attendanceActorType_(record.ACTOR_TYPE) === 'SENSEI') {
     const status = String(record.STATUS || '').trim().toUpperCase();
     if (status === 'HADIR' || status === 'TERLAMBAT') {
@@ -1631,6 +1670,7 @@ function saveSheetRecord_(sheetName, keyField, payload) {
       if (start === end) {
         return { success: false, message: 'Jam mulai dan selesai tidak boleh sama.' };
       }
+
       // Validasi istirahat (dari ISTIRAHAT_JSON atau fallback single)
       let breaksToValidate = [];
       if (record.ISTIRAHAT_JSON) {
@@ -1654,6 +1694,7 @@ function saveSheetRecord_(sheetName, keyField, payload) {
           return { success: false, message: 'Jam istirahat mulai dan selesai tidak boleh sama.' };
         }
       }
+    }
   }
 
   if (sheetName === 'SALARY') {
