@@ -622,7 +622,6 @@ window.ArimaPdf = (() => {
       [
         "Kategori: " + (invoice.CATEGORY || "-"),
         "Jatuh Tempo: " + dateLong(invoice.DUE_DATE),
-        "Penerima: " + (invoice.PENERIMA || "-")
       ]
     );
     y += 8;
