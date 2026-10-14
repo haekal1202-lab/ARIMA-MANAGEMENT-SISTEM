@@ -13,7 +13,10 @@ window.API = (() => {
 
   const deleteActions = {
     students: "studentDelete",
-    sensei: "senseiDelete"
+    sensei: "senseiDelete",
+    billing: "billingDelete",
+    payments: "paymentDelete",
+    salary: "salaryDelete"
   };
 
   function tokenStorageKey() {
@@ -272,6 +275,22 @@ window.API = (() => {
     return call(action, payload);
   }
 
+    async function billingDelete(payload) {
+    return call("billingDelete", payload);
+  }
+
+  async function paymentDelete(payload) {
+    return call("paymentDelete", payload);
+  }
+
+  async function salaryDelete(payload) {
+    return call("salaryDelete", payload);
+  }
+
+  async function salaryEmail(payload) {
+    return call("salaryEmail", payload);
+  }
+  
   return {
 
     call,
@@ -349,6 +368,14 @@ window.API = (() => {
     saveToken,
 
     clearToken
+
+    billingDelete,
+
+    paymentDelete,
+    
+    salaryDelete,
+    
+    salaryEmail,
 
   };
 
