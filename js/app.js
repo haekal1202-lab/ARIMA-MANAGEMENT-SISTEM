@@ -1685,11 +1685,21 @@ window.App = (() => {
             { key: "SALARY_ID", label: "ID" },
             { key: "ID_SENSEI", label: "ID Sensei" },
             { key: "SENSEI_NAME", label: "Nama Sensei" },
-            { key: "PERIOD", label: "Periode" },
+            {
+              key: "PERIOD",
+              label: "Periode",
+              render: value => {
+                const s = String(value || "");
+                const m = s.match(/^(\d{4})-(\d{2})/);
+                if (!m) return esc(s);
+                return m[1] + "-" + m[2];
+              }
+            },
             { key: "MEETING_COUNT", label: "Pertemuan" },
             { key: "HOUR_COUNT", label: "JP (45 menit)" },
             { key: "BASE_AMOUNT", label: "Gaji Pokok", render: value => formatRupiah(value) },
             { key: "BONUS", label: "Bonus", render: value => formatRupiah(value) },
+            { key: "TRANSPORT", label: "Transport", render: value => formatRupiah(value) },
             { key: "DEDUCTION", label: "Potongan", render: value => formatRupiah(value) },
             { key: "NET_SALARY", label: "Gaji Bersih", render: value => formatRupiah(value) },
             { key: "PAYMENT_STATUS", label: "Status" }
