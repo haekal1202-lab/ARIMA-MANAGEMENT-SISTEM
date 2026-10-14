@@ -1427,7 +1427,7 @@ function nextRecordId_(sheetName, values, keyIndex) {
 function normalizeRecordValue_(field, value) {
   const numericFields = [
     'TARIF_PER_PERTEMUAN', 'TARIF_PER_JAM', 'AMOUNT', 'MEETING_COUNT',
-    'HOUR_COUNT', 'BASE_AMOUNT', 'BONUS', 'DEDUCTION', 'NET_SALARY'
+    'HOUR_COUNT', 'BASE_AMOUNT', 'BONUS', 'TRANSPORT', 'DEDUCTION', 'NET_SALARY'
   ];
   const text = String(value === null || value === undefined ? '' : value).trim();
   if (!text || numericFields.indexOf(field) < 0) return text;
@@ -1596,9 +1596,10 @@ function calculateSalaryRecord_(record) {
   const jpCount = Math.round((totalMinutes / 45) * 100) / 100;
   const baseAmount = Math.round(jpCount * rate);
   const bonus = Number(record.BONUS || 0);
+  const transport = Number(record.TRANSPORT || 0);
   const deduction = Number(record.DEDUCTION || 0);
-  if (!Number.isFinite(bonus) || !Number.isFinite(deduction)) {
-    return { success: false, message: 'Bonus dan potongan harus berupa angka.' };
+  if (!Number.isFinite(bonus) || !Number.isFinite(transport) || !Number.isFinite(deduction)) {
+    return { success: false, message: 'Bonus, transport, dan potongan harus berupa angka.' };
   }
 
   return {
@@ -1607,7 +1608,7 @@ function calculateSalaryRecord_(record) {
       MEETING_COUNT: meetingCount,
       HOUR_COUNT: jpCount,
       BASE_AMOUNT: baseAmount,
-      NET_SALARY: baseAmount + bonus - deduction
+      NET_SALARY: baseAmount + bonus + transport - deduction
     }
   };
 }
