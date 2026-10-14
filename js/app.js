@@ -7,7 +7,7 @@ window.App = (() => {
     ["sensei", "Sensei", "◎"],
     ["attendance", "Absensi", "✓"],
     ["billing", "Tagihan", "Rp"],
-    ["receipts", "Kwitansi", "▣"],
+    ["receipts", "Kuitansi", "▣"],
     ["finance", "Mutasi Keuangan", "↔"],
     ["salary", "Payroll Sensei", "¥"],
     ["reports", "Laporan", "▤"],
@@ -1347,7 +1347,7 @@ window.App = (() => {
 
         case "receipts":
 
-          await renderReceipts(
+          await (
             el
           );
 
@@ -1414,7 +1414,7 @@ window.App = (() => {
 
   /*
    * =========================================================
-   * KWITANSI
+   * Kuitansi
    * =========================================================
    */
 
@@ -1441,7 +1441,7 @@ window.App = (() => {
   async function renderReceipts(el) {
 
     if (!isAdminUser()) {
-      el.innerHTML = `<div class="card"><h2>Akses Ditolak</h2><p class="muted">Kwitansi hanya dapat dibuka oleh admin.</p></div>`;
+      el.innerHTML = `<div class="card"><h2>Akses Ditolak</h2><p class="muted">Kuitansi hanya dapat dibuka oleh admin.</p></div>`;
       return;
     }
 
@@ -1464,7 +1464,7 @@ window.App = (() => {
     const nameOf = row => students.get(String(row.ID_SISWA || "").trim())?.NAMA || "-";
 
     el.innerHTML = `
-      ${pageHeader("Kwitansi", "Cetak bukti pembayaran siswa dari data pembayaran yang sudah tercatat.")}
+      ${pageHeader("Kuitansi", "Cetak bukti pembayaran siswa dari data pembayaran yang sudah tercatat.")}
       <div class="report-toolbar">
         <div>
           <label for="receipt-search">Cari pembayaran</label>
@@ -1500,6 +1500,7 @@ window.App = (() => {
                   <td><div class="receipt-actions">
                     <button type="button" class="btn btn-primary" data-receipt-pdf="${esc(row.PAYMENT_ID)}">Cetak PDF</button>
                     <button type="button" class="btn btn-light" data-receipt-wa="${esc(row.PAYMENT_ID)}">WhatsApp</button>
+                    <button type="button" class="btn btn-danger" data-receipt-delete="${esc(row.PAYMENT_ID)}">Hapus</button>
                   </div></td>
                 </tr>`).join("")}
             </tbody>
@@ -1567,7 +1568,7 @@ window.App = (() => {
       pdf.setTextColor(180, 20, 27);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(16);
-      pdf.text("KWITANSI", margin, 66);
+      pdf.text("Kuitansi", margin, 66);
       pdf.setTextColor(75, 75, 80);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
@@ -1610,9 +1611,9 @@ window.App = (() => {
       pdf.text("Admin LPKS Arima Persada", width - margin, y + 32, { align: "right" });
       pdf.setFontSize(8);
       pdf.setTextColor(112, 112, 118);
-      pdf.text("Kwitansi ini sah sebagai bukti pembayaran yang tercatat di sistem LPKS Arima Persada.", margin, 280);
+      pdf.text("Kuitansi ini sah sebagai bukti pembayaran yang tercatat di sistem LPKS Arima Persada.", margin, 280);
 
-      pdf.save(`kwitansi-${String(payment.PAYMENT_ID || "pembayaran").replace(/[^A-Za-z0-9_-]/g, "-")}.pdf`);
+      pdf.save(`Kuitansi-${String(payment.PAYMENT_ID || "pembayaran").replace(/[^A-Za-z0-9_-]/g, "-")}.pdf`);
     }
 
     function sendWhatsApp(payment) {
@@ -1636,20 +1637,28 @@ window.App = (() => {
     listRoot.addEventListener("click", async event => {
       const pdfButton = event.target.closest("[data-receipt-pdf]");
       const waButton = event.target.closest("[data-receipt-wa]");
-      const button = pdfButton || waButton;
+      const delButton = event.target.closest("[data-receipt-delete]");
+      const button = pdfButton || waButton || delButton;
       if (!button) return;
-      const id = button.dataset.receiptPdf || button.dataset.receiptWa;
+      const id = button.dataset.receiptPdf || button.dataset.receiptWa || button.dataset.receiptDelete;
       const payment = payments.find(row => String(row.PAYMENT_ID) === id);
       if (!payment) return;
       try {
-        if (pdfButton) {
+        if (delButton) {
+          if (!confirm("Hapus pembayaran ini? Mutasi keuangan terkait juga akan dihapus.")) return;
+          button.disabled = true;
+          const res = await API.deleteRecord("payments", { PAYMENT_ID: id, __ROW_NUMBER: payment.__ROW_NUMBER });
+          if (res?.success === false) throw new Error(res.message || "Gagal menghapus.");
+          showToast(res?.message || "Pembayaran berhasil dihapus.");
+          await renderReceipts(el);
+        } else if (pdfButton) {
           button.disabled = true;
           await downloadReceipt(payment);
         } else {
           sendWhatsApp(payment);
         }
       } catch (error) {
-        showToast(error.message || "Kwitansi gagal dibuat.", "error");
+        showToast(error.message || "Aksi gagal.", "error");
       } finally {
         button.disabled = false;
       }
@@ -3065,11 +3074,27 @@ window.App = (() => {
                 <button type="button" class="btn btn-small" data-edit-billing="${esc(invoice.BILLING_ID||"")}">Edit</button>
                 <button type="button" class="btn btn-small" data-download-invoice="${esc(invoice.BILLING_ID||"")}">Unduh PDF</button>
                 <button type="button" class="btn btn-small btn-light" data-send-invoice="${esc(invoice.BILLING_ID||"")}">Kirim / WhatsApp</button>
+                <button type="button" class="btn btn-small btn-danger" data-delete-billing="${esc(invoice.BILLING_ID||"")}">Hapus</button>
               `
             })}</div>
           </section>
         `;
 
+        qsa("[data-delete-billing]", resultRoot).forEach(button => button.addEventListener("click", async () => {
+            const invoice = studentInvoices.find(row => String(row.BILLING_ID) === String(button.dataset.deleteBilling));
+            if (!invoice) return;
+            if (!confirm(`Hapus tagihan ${invoice.BILLING_ID}? Tindakan ini tidak dapat dibatalkan.`)) return;
+            button.disabled = true;
+            try {
+              const res = await API.deleteRecord("billing", { BILLING_ID: invoice.BILLING_ID, __ROW_NUMBER: invoice.__ROW_NUMBER });
+              if (res?.success === false) throw new Error(res.message || "Gagal menghapus tagihan.");
+              showToast(res?.message || "Tagihan berhasil dihapus.");
+              await renderBilling(el);
+            } catch (error) {
+              button.disabled = false;
+              showToast(error.message || "Gagal menghapus tagihan.", "error");
+            }
+        }));
         qsa("[data-edit-billing]", resultRoot).forEach(button => button.addEventListener("click", () => {
           const invoice = studentInvoices.find(row => String(row.BILLING_ID) === String(button.dataset.editBilling));
           if (invoice) openFormModal("billing", invoice);
@@ -3336,18 +3361,11 @@ window.App = (() => {
             ],
             {
               actions: row => `
-
-                <button
-                  type="button"
-                  class="btn btn-small"
-                  data-edit-salary="${esc(
-                    row.SALARY_ID
-                  )}"
-                >
-                  Edit
-                </button>
-
-              `
+    <button type="button" class="btn btn-small" data-edit-salary="${esc(row.SALARY_ID)}">Edit</button>
+    <button type="button" class="btn btn-small btn-light" data-pdf-salary="${esc(row.SALARY_ID)}">Slip PDF</button>
+    <button type="button" class="btn btn-small btn-light" data-email-salary="${esc(row.SALARY_ID)}">Email</button>
+    <button type="button" class="btn btn-small btn-danger" data-delete-salary="${esc(row.SALARY_ID)}">Hapus</button>
+  `
             }
           )}
 
@@ -3378,7 +3396,7 @@ window.App = (() => {
 
       }
 
-
+     
       qsa(
         "[data-edit-salary]"
       ).forEach(
@@ -3413,9 +3431,55 @@ window.App = (() => {
             }
           );
 
-        }
-      );
+qsa("[data-delete-salary]").forEach(button => button.addEventListener("click", async () => {
+  const row = rows.find(item => String(item.SALARY_ID) === String(button.dataset.deleteSalary));
+  if (!row) return;
+  if (!confirm(`Hapus payroll ${row.SALARY_ID} periode ${row.PERIOD}?`)) return;
+  button.disabled = true;
+  try {
+    const res = await API.deleteRecord("salary", { SALARY_ID: row.SALARY_ID, __ROW_NUMBER: row.__ROW_NUMBER });
+    if (res?.success === false) throw new Error(res.message || "Gagal menghapus payroll.");
+    showToast(res?.message || "Payroll berhasil dihapus.");
+    await renderSalary(el);
+  } catch (error) {
+    button.disabled = false;
+    showToast(error.message || "Gagal menghapus payroll.", "error");
+  }
+}));
 
+qsa("[data-pdf-salary]").forEach(button => button.addEventListener("click", async () => {
+  const row = rows.find(item => String(item.SALARY_ID) === String(button.dataset.pdfSalary));
+  if (!row) return;
+  button.disabled = true;
+  try {
+    const { pdf, fileName } = await buildSalarySlipPdf(row, senseiRows);
+    pdf.save(fileName);
+  } catch (error) {
+    showToast(error.message || "PDF slip gaji gagal dibuat.", "error");
+  } finally {
+    button.disabled = false;
+  }
+}));
+
+qsa("[data-email-salary]").forEach(button => button.addEventListener("click", async () => {
+  const row = rows.find(item => String(item.SALARY_ID) === String(button.dataset.emailSalary));
+  if (!row) return;
+  button.disabled = true;
+  button.textContent = "Mengirim...";
+  try {
+    const { pdf } = await buildSalarySlipPdf(row, senseiRows);
+    const pdfBase64 = pdf.output("datauristring").split(",")[1];
+    const res = await API.salaryEmail({ SALARY_ID: row.SALARY_ID, pdfBase64 });
+    if (res?.success === false) throw new Error(res.message || "Gagal mengirim email.");
+    showToast(res?.message || "Slip gaji berhasil dikirim.");
+  } catch (error) {
+    showToast(error.message || "Email gagal dikirim.", "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Email";
+  }
+}));
+          
     } catch (error) {
 
       renderError(
