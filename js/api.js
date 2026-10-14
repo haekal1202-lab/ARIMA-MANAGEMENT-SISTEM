@@ -290,6 +290,7 @@ window.API = (() => {
     salaryEmail,
     create,
     update,
+    deleteRecord,
     delete: deleteRecord,
     getToken,
     saveToken,
