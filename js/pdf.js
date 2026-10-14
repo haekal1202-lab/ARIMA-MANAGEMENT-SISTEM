@@ -340,7 +340,6 @@ window.ArimaPdf = (() => {
       day: "numeric", month: "long", year: "numeric"
     });
 
-    // Pisahkan "Nama - Jabatan" jadi 2 baris
     const raw = String(name || "").trim();
     let personName = raw;
     let personRole = "";
@@ -352,33 +351,27 @@ window.ArimaPdf = (() => {
 
     const blockWidth = 60;
 
-    // Kota + tanggal (kanan)
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(9);
     pdf.setTextColor(...COLOR.body);
     pdf.text(`${city}, ${today}`, x, y);
-
-    // "Hormat kami,"
     pdf.text(role || "", x, y + 4.5);
 
-    // Ruang tanda tangan (kosong) — tinggi 20mm
-    // Nama di atas garis
+    // Ruang tanda tangan lebih pendek (12mm) — nama di atas garis
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(9.5);
     pdf.setTextColor(...COLOR.dark);
-    pdf.text(personName || "-", x, y + 26);
+    pdf.text(personName || "-", x, y + 18);
 
-    // Garis
     pdf.setDrawColor(120, 120, 125);
     pdf.setLineWidth(0.3);
-    pdf.line(x, y + 28.5, x + blockWidth, y + 28.5);
+    pdf.line(x, y + 20.5, x + blockWidth, y + 20.5);
 
-    // Jabatan di bawah garis
     if (personRole) {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8.5);
       pdf.setTextColor(...COLOR.muted);
-      pdf.text(personRole, x, y + 33);
+      pdf.text(personRole, x, y + 25);
     }
   }
 
@@ -406,7 +399,8 @@ window.ArimaPdf = (() => {
    */
   function ensureSpace(pdf, y, needed) {
     const pageHeight = pdf.internal.pageSize.getHeight();
-    if (y + needed > pageHeight - 30) {
+    // Biarkan konten mengalir sampai benar-benar mentok (sisakan 20mm untuk footer)
+    if (y + needed > pageHeight - 20) {
       pdf.addPage();
       return 30;
     }
@@ -446,7 +440,7 @@ window.ArimaPdf = (() => {
       "Tagihan: " + (payment.BILLING_ID || "-")
     ]);
 
-    y += 42;
+    y += 38;
 
     // Tabel rincian
     y = drawItemsTable(
@@ -461,7 +455,7 @@ window.ArimaPdf = (() => {
       [inner * 0.55, inner * 0.15, inner * 0.15, inner * 0.15]
     );
 
-    y += 8;
+    y += 6;
 
     // Terbilang
     pdf.setFont("helvetica", "italic");
@@ -469,11 +463,11 @@ window.ArimaPdf = (() => {
     pdf.setTextColor(90, 90, 96);
     const terbilangText = "Terbilang: " + capitalize(terbilang(payment.AMOUNT));
     pdf.text(pdf.splitTextToSize(terbilangText, inner), MARGIN, y);
-    y += 12;
+    y += 10;
 
     // Total
     drawTotalBox(pdf, MARGIN, y, inner, "TOTAL DITERIMA", formatRupiah(payment.AMOUNT));
-    y += 34;
+    y += 28;
 
     // Tanda tangan
     y = ensureSpace(pdf, y, 45);
@@ -523,7 +517,7 @@ window.ArimaPdf = (() => {
       "Program: " + ((student && student.PROGRAM) || "-")
     ]);
 
-    y += 42;
+    y += 38;
 
     // Tabel rincian
     y = drawItemsTable(
@@ -538,7 +532,7 @@ window.ArimaPdf = (() => {
       [inner * 0.5, inner * 0.18, inner * 0.16, inner * 0.16]
     );
 
-    y += 8;
+    y += 6;
 
     // Status
     // Status
@@ -558,11 +552,11 @@ window.ArimaPdf = (() => {
     pdf.setTextColor(90, 90, 96);
     const terbilangText = "Terbilang: " + capitalize(terbilang(invoice.AMOUNT));
     pdf.text(pdf.splitTextToSize(terbilangText, inner), MARGIN, y);
-    y += 12;
+    y += 10;
 
     // Total
     drawTotalBox(pdf, MARGIN, y, inner, "TOTAL TAGIHAN", formatRupiah(invoice.AMOUNT));
-    y += 30;
+    y += 26;
 
     // Catatan (jika ada)
     if (invoice.NOTES) {
@@ -628,7 +622,7 @@ window.ArimaPdf = (() => {
       "WhatsApp: " + ((senseiRow && senseiRow.NO_WA) || "-")
     ]);
 
-    y += 42;
+    y += 38;
 
     // Rincian perhitungan
     const baseAmount = Number(salaryRow.BASE_AMOUNT || 0);
@@ -653,7 +647,7 @@ window.ArimaPdf = (() => {
       [inner * 0.65, inner * 0.35]
     );
 
-    y += 8;
+    y += 6;
 
     // Terbilang
     pdf.setFont("helvetica", "italic");
@@ -661,11 +655,11 @@ window.ArimaPdf = (() => {
     pdf.setTextColor(90, 90, 96);
     const terbilangText = "Terbilang: " + capitalize(terbilang(netSalary));
     pdf.text(pdf.splitTextToSize(terbilangText, inner), MARGIN, y);
-    y += 12;
+    y += 10;
 
     // Total gaji bersih
     drawTotalBox(pdf, MARGIN, y, inner, "GAJI BERSIH DITERIMA", formatRupiah(netSalary));
-    y += 30;
+    y += 26;
 
     // Status pembayaran
     drawStatusRow(pdf, MARGIN, y, "Status pembayaran: ", salaryRow.PAYMENT_STATUS || "-");
