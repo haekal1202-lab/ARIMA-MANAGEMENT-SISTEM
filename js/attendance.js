@@ -6,11 +6,7 @@
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, char => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     })[char]);
   }
 
@@ -40,13 +36,13 @@
           <img src="assets/logo.webp" alt="Logo LPKS Arima Persada">
           <div>
             <strong>LPKS Arima Persada</strong>
-            <span>Sistem Absensi</span>
+            <span>Sistem Absensi Siswa dan Sensei</span>
           </div>
         </header>
         <section class="attendance-panel attendance-login-panel">
           <span class="attendance-kicker">SISWA &amp; SENSEI</span>
-          <h1>ログイン</h1>
-          <p class="attendance-muted">アカウントのIDとパスワードを入力してください。</p>
+          <h1>Masuk Absensi</h1>
+          <p class="attendance-muted">Gunakan ID dan password akun Anda.</p>
           <form id="attendance-login-form" class="attendance-form">
             <label for="attendance-login-id">ID Pengguna</label>
             <input id="attendance-login-id" name="userId" autocomplete="username" required>
@@ -110,12 +106,17 @@
       ["Status", log.STATUS || "-"],
       [isSensei ? "Mulai" : "Jam masuk", log.JAM_MASUK || "-"]
     ];
+
     if (isSensei) {
-      rows.push(["Istirahat", (log.ISTIRAHAT_MULAI || log.ISTIRAHAT_SELESAI)
-        ? `${log.ISTIRAHAT_MULAI || "-"} – ${log.ISTIRAHAT_SELESAI || "-"}`
-        : "-"]);
+      const breaksList = Array.isArray(log.ISTIRAHAT) ? log.ISTIRAHAT : [];
+      const breaksText = breaksList.length
+        ? breaksList.map(b => `${b[0]} – ${b[1]}`).join(" • ")
+        : "-";
+      rows.push(["Istirahat", breaksText]);
     }
+
     rows.push([isSensei ? "Selesai" : "Jam keluar", log.JAM_KELUAR || "-"]);
+
     if (isSensei) {
       rows.push(["Durasi dibayar", formatDuration(log.DURASI_MENIT)]);
       rows.push(["Jumlah JP (45 menit)", log.JP === null || log.JP === undefined || log.JP === "" ? "-" : String(log.JP)]);
@@ -151,6 +152,17 @@
     const today = localDate();
     const saved = Boolean(todayLog.ATTENDANCE_ID);
     const currentStart = todayLog.JAM_MASUK || localTime();
+
+    // Ambil istirahat existing
+    let initialBreaks = [];
+    if (Array.isArray(todayLog.ISTIRAHAT) && todayLog.ISTIRAHAT.length) {
+      initialBreaks = todayLog.ISTIRAHAT.slice();
+    } else if (todayLog.ISTIRAHAT_MULAI || todayLog.ISTIRAHAT_SELESAI) {
+      if (todayLog.ISTIRAHAT_MULAI && todayLog.ISTIRAHAT_SELESAI) {
+        initialBreaks = [[todayLog.ISTIRAHAT_MULAI, todayLog.ISTIRAHAT_SELESAI]];
+      }
+    }
+    if (!initialBreaks.length) initialBreaks = [["", ""]];
 
     root.innerHTML = `
       <div class="attendance-shell">
@@ -195,16 +207,6 @@
                 <label for="attendance-start">${isSensei ? "Mulai" : "Jam masuk"}</label>
                 <input id="attendance-start" type="time" name="JAM_MASUK" value="${escapeHtml(currentStart)}">
               </div>
-              ${isSensei ? `
-                <div>
-                  <label for="attendance-break-start">Istirahat mulai</label>
-                  <input id="attendance-break-start" type="time" name="ISTIRAHAT_MULAI" value="${escapeHtml(todayLog.ISTIRAHAT_MULAI || "")}">
-                </div>
-                <div>
-                  <label for="attendance-break-end">Istirahat selesai</label>
-                  <input id="attendance-break-end" type="time" name="ISTIRAHAT_SELESAI" value="${escapeHtml(todayLog.ISTIRAHAT_SELESAI || "")}">
-                </div>
-              ` : ""}
               <div>
                 <label for="attendance-end">${isSensei ? "Selesai" : "Jam keluar"}</label>
                 <input id="attendance-end" type="time" name="JAM_KELUAR" value="${escapeHtml(todayLog.JAM_KELUAR || "")}">
@@ -212,7 +214,16 @@
             </div>
 
             ${isSensei ? `
-              <p class="attendance-note">Durasi payroll menghitung 1 JP = 45 menit, di luar waktu istirahat yang Anda isi. Kosongkan istirahat jika tidak ada.</p>
+              <div class="attendance-breaks-block">
+                <label>Istirahat</label>
+                <p class="attendance-note">Tambahkan jam istirahat jika ada. Bisa lebih dari satu.</p>
+                <div id="attendance-breaks-list"></div>
+                <button type="button" class="btn btn-light btn-small" id="add-break-btn">+ Tambah Istirahat</button>
+              </div>
+            ` : ""}
+
+            ${isSensei ? `
+              <p class="attendance-note">Durasi payroll menghitung 1 JP = 45 menit, di luar waktu istirahat yang Anda isi.</p>
             ` : ""}
 
             ${isSensei ? `
@@ -242,12 +253,55 @@
       </div>
     `;
 
+    // === UI Breaks ===
+    const breaksList = document.getElementById("attendance-breaks-list");
+    function renderBreaks(breaks) {
+      breaksList.innerHTML = breaks.map((b, idx) => `
+        <div class="break-row" data-idx="${idx}">
+          <input type="time" class="break-start" value="${escapeHtml(b[0] || "")}">
+          <span class="break-sep">–</span>
+          <input type="time" class="break-end" value="${escapeHtml(b[1] || "")}">
+          <button type="button" class="btn btn-small btn-danger remove-break-btn" data-idx="${idx}">×</button>
+        </div>
+      `).join("");
+
+      breaksList.querySelectorAll(".remove-break-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const current = collectBreaks();
+          current.splice(Number(btn.dataset.idx), 1);
+          renderBreaks(current.length ? current : [["", ""]]);
+        });
+      });
+    }
+
+    function collectBreaks() {
+      const rows = breaksList.querySelectorAll(".break-row");
+      const result = [];
+      rows.forEach(row => {
+        const start = row.querySelector(".break-start").value;
+        const end = row.querySelector(".break-end").value;
+        if (start || end) result.push([start, end]);
+      });
+      return result;
+    }
+
+    if (isSensei) {
+      renderBreaks(initialBreaks);
+      document.getElementById("add-break-btn").addEventListener("click", () => {
+        const current = collectBreaks();
+        current.push(["", ""]);
+        renderBreaks(current);
+      });
+    }
+
+    // === Logout ===
     document.getElementById("attendance-logout").addEventListener("click", () => {
       window.API.clearToken();
       localStorage.removeItem(SESSION_KEY);
       renderLogin();
     });
 
+    // === Kompresi gambar ===
     async function compressImage(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -303,6 +357,7 @@
       if (file) uploadPhoto(file, "ABSENSI", "attendance-photo-absensi-url", "attendance-photo-absensi-preview").catch(() => {});
     });
 
+    // === Submit ===
     document.getElementById("self-attendance-form").addEventListener("submit", async event => {
       event.preventDefault();
       const form = event.currentTarget;
@@ -320,8 +375,8 @@
           CATATAN: formData.get("CATATAN")
         };
         if (isSensei) {
-          payload.ISTIRAHAT_MULAI = formData.get("ISTIRAHAT_MULAI") || "";
-          payload.ISTIRAHAT_SELESAI = formData.get("ISTIRAHAT_SELESAI") || "";
+          const breaks = collectBreaks().filter(b => b[0] && b[1]);
+          payload.ISTIRAHAT_JSON = JSON.stringify(breaks);
           payload.FOTO_KELAS_URL = formData.get("FOTO_KELAS_URL") || "";
           payload.FOTO_ABSENSI_URL = formData.get("FOTO_ABSENSI_URL") || "";
         }
