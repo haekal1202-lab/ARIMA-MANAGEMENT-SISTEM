@@ -448,7 +448,8 @@ window.ArimaPdf = (() => {
 
     // Tanda tangan
     y = ensureSpace(pdf, y, 45);
-    drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", "Admin LPKS Arima Persada");
+    const receiptSigner = String(payment.REFERENCE_NO || "Admin LPKS Arima Persada").trim();
+    drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", receiptSigner);
 
     // Footer
     drawFooter(pdf,
@@ -549,7 +550,8 @@ window.ArimaPdf = (() => {
 
     // Tanda tangan
     y = ensureSpace(pdf, y, 45);
-    drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", "Admin LPKS Arima Persada");
+    const invoiceSigner = String(invoice.PENERIMA || "Admin LPKS Arima Persada").trim();
+    drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", invoiceSigner);
 
     // Footer
     drawFooter(pdf,
@@ -669,7 +671,8 @@ window.ArimaPdf = (() => {
 
     // Tanda tangan
     y = ensureSpace(pdf, y, 45);
-    drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", "Admin LPKS Arima Persada");
+    const salarySigner = String(salaryRow.PENERIMA || "Admin LPKS Arima Persada").trim();
+    drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", salarySigner);
 
     // Footer
     drawFooter(pdf,
