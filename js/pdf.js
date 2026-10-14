@@ -426,7 +426,7 @@ window.ArimaPdf = (() => {
       [[
         payment.NOTES || ("Pembayaran tagihan " + (payment.BILLING_ID || "-")),
         payment.PAYMENT_METHOD || "-",
-        payment.REFERENCE_NO || "-",
+        payment.PENERIMA || "-",
         formatRupiah(payment.AMOUNT)
       ]],
       [inner * 0.55, inner * 0.15, inner * 0.15, inner * 0.15]
