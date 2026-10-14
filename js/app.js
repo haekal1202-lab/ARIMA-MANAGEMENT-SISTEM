@@ -7,6 +7,7 @@ window.App = (() => {
     ["sensei", "Sensei", "◎"],
     ["attendance", "Absensi", "✓"],
     ["billing", "Tagihan", "Rp"],
+    ["receipts", "Kwitansi", "▣"],
     ["finance", "Mutasi Keuangan", "↔"],
     ["salary", "Payroll Sensei", "¥"],
     ["reports", "Laporan", "▤"],
