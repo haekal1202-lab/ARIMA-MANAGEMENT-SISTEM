@@ -1032,7 +1032,7 @@ window.App = (() => {
               ${studentsWithoutIds ? `${formatNumber(studentsWithoutIds)} siswa` : ""}
               ${studentsWithoutIds && senseiWithoutIds ? " dan " : ""}
               ${senseiWithoutIds ? `${formatNumber(senseiWithoutIds)} sensei` : ""}
-              belum memakai format ID baru. ID dibuat dari 3 huruf awal nama + 4 angka terakhir WhatsApp.
+              belum memakai format ID baru. ID dibuat dari 2 huruf awal nama + 4 angka terakhir WhatsApp.
             </span>
             <div class="toolbar">
               ${studentsWithoutIds ? `<button type="button" class="btn btn-small" id="btn-assign-student-ids">Buat ID Siswa</button>` : ""}
@@ -1943,7 +1943,7 @@ window.App = (() => {
 
         <section class="section account-management">
           <div class="section-head">
-            <div><h2>Akun Pengguna</h2><p class="muted">ID login siswa/sensei memakai 3 huruf awal nama + 4 angka terakhir WhatsApp; ID master tetap ditautkan.</p></div>
+            <div><h2>Akun Pengguna</h2><p class="muted">ID login siswa/sensei memakai 2 huruf awal nama + 4 angka terakhir WhatsApp; ID master tetap ditautkan.</p></div>
             <div class="toolbar">
               <button type="button" class="btn btn-light" id="btn-generate-user-ids">Generate USER ID</button>
               <button type="button" class="btn btn-primary" id="btn-add-account">+ Tambah Akun</button>
@@ -2029,7 +2029,7 @@ window.App = (() => {
           <div class="form-modal-heading">
             <span class="form-modal-kicker">PENGATURAN AKUN</span>
             <h2>${isReset ? "Reset Password" : "Tambah Akun"}</h2>
-            <p>${isReset ? "Tentukan password baru untuk akun ini." : "ID akun siswa/sensei dibuat dari 3 huruf awal nama dan 4 angka terakhir nomor WhatsApp."}</p>
+            <p>${isReset ? "Tentukan password baru untuk akun ini." : "ID akun siswa/sensei dibuat dari 2 huruf awal nama dan 4 angka terakhir nomor WhatsApp."}</p>
           </div>
           <button type="button" class="modal-close" id="account-modal-close" aria-label="Tutup">×</button>
         </div>
@@ -2052,7 +2052,7 @@ window.App = (() => {
             <div class="form-group form-group-wide" id="account-linked-id-group">
               <label for="account-linked-id">Pilih ID Master</label>
               <select id="account-linked-id" name="linkedId" required></select>
-              <span class="tiny">ID login mengikuti format 3 huruf awal nama + 4 angka terakhir WhatsApp.</span>
+              <span class="tiny">ID login mengikuti format 2 huruf awal nama + 4 angka terakhir WhatsApp.</span>
             </div>
             <div class="form-group" id="account-admin-id-group">
               <label for="account-admin-id">ID Admin</label>
@@ -2096,8 +2096,8 @@ window.App = (() => {
       const generatedAccountId = person => {
         const name = String(person?.NAMA || "").trim().match(/[A-Za-z]+/);
         const phone = String(person?.NO_WA || "").replace(/\D/g, "");
-        if (!name || name[0].length < 3 || phone.length < 4) return "";
-        return name[0].slice(0, 3).toUpperCase() + phone.slice(-4);
+        if (!name || name[0].length < 2 || phone.length < 4) return "";
+        return name[0].slice(0, 2).toUpperCase() + phone.slice(-4);
       };
 
       const updateLinkedPreview = () => {
