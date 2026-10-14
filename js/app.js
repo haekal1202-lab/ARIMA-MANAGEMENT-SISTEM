@@ -110,8 +110,8 @@ window.App = (() => {
       editTitle: "Edit Pembayaran",
       idField: "PAYMENT_ID",
       fields: [
-        { key: "BILLING_ID", label: "ID Tagihan", type: "text", required: true },
         { key: "ID_SISWA", label: "ID Siswa", type: "text", required: true },
+        { key: "BILLING_ID", label: "ID Tagihan", type: "text", required: true },
         { key: "PAYMENT_DATE", label: "Tanggal Pembayaran", type: "date", required: true },
         { key: "AMOUNT", label: "Jumlah Pembayaran", type: "number", required: true },
         { key: "PAYMENT_METHOD", label: "Metode Pembayaran", type: "select", required: true, options: ["CASH", "TRANSFER", "QRIS", "LAINNYA"] },
@@ -1064,13 +1064,19 @@ window.App = (() => {
       const initialId = params.get("studentId") || "";
 
       el.innerHTML = `
-        ${pageHeader("Tagihan Siswa", "Cari ID siswa untuk melihat dan mengirim surat tagihan.", "Tambah Tagihan", "btn-add-billing")}
+        ${pageHeader("Tagihan Siswa", "Cari ID atau nama siswa untuk melihat dan mengirim surat tagihan.", "Tambah Tagihan", "btn-add-billing")}
         <section class="card billing-lookup">
           <form id="billing-student-search" class="billing-search-form">
-            <div><label for="billing-student-id">ID Siswa</label><input id="billing-student-id" name="studentId" value="${esc(initialId)}" placeholder="Masukkan ID siswa" autocomplete="off" required></div>
+            <div>
+              <label for="billing-student-id">Cari Siswa (ID atau Nama)</label>
+              <input id="billing-student-id" name="studentId" value="${esc(initialId)}" placeholder="Ketik ID, sebagian ID, atau nama siswa..." autocomplete="off" list="billing-student-list" required>
+              <datalist id="billing-student-list">
+                ${students.filter(row => String(row.ID_SISWA || "").trim()).map(row => `<option value="${esc(row.ID_SISWA || "")}">${esc(row.NAMA || "")}</option>`).join("")}
+              </datalist>
+            </div>
             <button type="submit" class="btn btn-primary">Cari Data</button>
           </form>
-          <p class="tiny">Nama dan nomor WhatsApp diambil otomatis dari data master siswa.</p>
+          <p class="tiny">Bisa diketik ID lengkap, sebagian ID, atau nama siswa. Nama dan nomor WhatsApp diambil otomatis dari data master.</p>
         </section>
         <div id="billing-student-result" class="section"></div>
       `;
@@ -1152,7 +1158,7 @@ window.App = (() => {
 
         qsa("[data-edit-billing]", resultRoot).forEach(button => button.addEventListener("click", () => {
           const invoice = studentInvoices.find(row => String(row.BILLING_ID) === String(button.dataset.editBilling));
-          if (invoice) openFormModal("billing", invoice);
+          if (invoice) openFormModal("billing", invoice, { studentRows: students });
         }));
 
         qsa("[data-download-invoice]", resultRoot).forEach(button => button.addEventListener("click", async () => {
@@ -1186,11 +1192,14 @@ window.App = (() => {
             showToast(error.message || "Gagal menghapus tagihan.", "error");
           }
         }));
-                qsa("[data-pay-billing]", resultRoot).forEach(button => button.addEventListener("click", () => {
+
+        qsa("[data-pay-billing]", resultRoot).forEach(button => button.addEventListener("click", () => {
           const invoice = studentInvoices.find(row => String(row.BILLING_ID) === String(button.dataset.payBilling));
           if (!invoice) return;
           const today = new Date().toISOString().slice(0, 10);
           openFormModal("payments", null, {
+            studentRows: students,
+            billingRows: studentInvoices,
             defaults: {
               BILLING_ID: invoice.BILLING_ID || "",
               ID_SISWA: invoice.ID_SISWA || student.ID_SISWA || "",
@@ -1203,15 +1212,72 @@ window.App = (() => {
         }));
       }
 
+      function findStudents(query) {
+        const q = String(query || "").trim().toUpperCase();
+        if (!q) return [];
+        const exactId = students.find(row => String(row.ID_SISWA || "").trim().toUpperCase() === q);
+        if (exactId) return [exactId];
+        const exactName = students.filter(row => String(row.NAMA || "").trim().toUpperCase() === q);
+        if (exactName.length === 1) return exactName;
+        return students.filter(row => {
+          const id = String(row.ID_SISWA || "").trim().toUpperCase();
+          const name = String(row.NAMA || "").trim().toUpperCase();
+          return id.includes(q) || name.includes(q);
+        });
+      }
+
+      function renderStudentPicker(candidates) {
+        resultRoot.innerHTML = `
+          <section class="card">
+            <div class="section-head"><h2>Pilih Siswa (${formatNumber(candidates.length)} hasil)</h2></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>ID</th><th>Nama</th><th>WhatsApp</th><th></th></tr></thead>
+                <tbody>
+                  ${candidates.map(row => `
+                    <tr>
+                      <td>${esc(row.ID_SISWA || "")}</td>
+                      <td>${esc(row.NAMA || "")}</td>
+                      <td>${esc(row.NO_WA || "-")}</td>
+                      <td><button type="button" class="btn btn-small btn-primary" data-pick-student="${esc(row.ID_SISWA || "")}">Pilih</button></td>
+                    </tr>`).join("")}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        `;
+        qsa("[data-pick-student]", resultRoot).forEach(btn => {
+          btn.addEventListener("click", () => {
+            const student = candidates.find(r => String(r.ID_SISWA) === String(btn.dataset.pickStudent));
+            if (!student) return;
+            idInput.value = student.ID_SISWA;
+            const url = new URL(window.location.href);
+            url.searchParams.set("studentId", student.ID_SISWA);
+            window.history.replaceState({}, "", url);
+            renderStudentInvoices(student);
+          });
+        });
+      }
+
       searchForm.addEventListener("submit", event => {
         event.preventDefault();
-        const value = idInput.value.trim().toUpperCase();
-        const student = students.find(row => String(row.ID_SISWA || "").trim().toUpperCase() === value);
-        const url = new URL(window.location.href);
-        if (student) url.searchParams.set("studentId", student.ID_SISWA);
-        else url.searchParams.delete("studentId");
-        window.history.replaceState({}, "", url);
-        renderStudentInvoices(student || null);
+        const value = idInput.value.trim();
+        if (!value) return;
+        const matches = findStudents(value);
+        if (!matches.length) {
+          resultRoot.innerHTML = `<div class="card billing-empty-state"><strong>Siswa tidak ditemukan.</strong><span>Tidak ada ID atau nama yang cocok dengan "${esc(value)}".</span></div>`;
+          return;
+        }
+        if (matches.length === 1) {
+          const student = matches[0];
+          idInput.value = student.ID_SISWA;
+          const url = new URL(window.location.href);
+          url.searchParams.set("studentId", student.ID_SISWA);
+          window.history.replaceState({}, "", url);
+          renderStudentInvoices(student);
+          return;
+        }
+        renderStudentPicker(matches);
       });
 
       addButton.addEventListener("click", () => {
@@ -1222,10 +1288,12 @@ window.App = (() => {
       });
 
       if (initialId) {
-        const student = students.find(row => String(row.ID_SISWA || "").trim().toUpperCase() === initialId.trim().toUpperCase());
+        const value = initialId.trim().toUpperCase();
+        const student = students.find(row => String(row.ID_SISWA || "").trim().toUpperCase() === value)
+          || students.find(row => String(row.NAMA || "").trim().toUpperCase() === value);
         renderStudentInvoices(student || null);
       } else {
-        resultRoot.innerHTML = `<div class="card billing-empty-state"><strong>Cari data tagihan berdasarkan ID siswa.</strong><span>Nama dan nomor WhatsApp akan muncul otomatis jika ID ditemukan.</span></div>`;
+        resultRoot.innerHTML = `<div class="card billing-empty-state"><strong>Cari data tagihan berdasarkan ID atau nama siswa.</strong><span>Nama dan nomor WhatsApp akan muncul otomatis jika ID ditemukan.</span></div>`;
       }
     } catch (error) {
       renderError(el, error);
@@ -1440,13 +1508,14 @@ window.App = (() => {
     }
 
     try {
-      const [billingResponse, paymentResponse, salaryResponse, senseiResponse] = await Promise.all([
-        API.billing(), API.payments(), API.salary(), API.sensei()
+      const [billingResponse, paymentResponse, salaryResponse, senseiResponse, studentsResponse] = await Promise.all([
+        API.billing(), API.payments(), API.salary(), API.sensei(), API.students()
       ]);
       const billings = Array.isArray(billingResponse?.data) ? billingResponse.data : [];
       const payments = Array.isArray(paymentResponse?.data) ? paymentResponse.data : [];
       const salaries = Array.isArray(salaryResponse?.data) ? salaryResponse.data : [];
       const senseiRows = Array.isArray(senseiResponse?.data) ? senseiResponse.data : [];
+      const students = Array.isArray(studentsResponse?.data) ? studentsResponse.data : [];
       const selectedMonth = new URLSearchParams(window.location.search).get("reportMonth")
         || new Date().toISOString().slice(0, 7);
 
@@ -1487,6 +1556,7 @@ window.App = (() => {
       const payrollPending = sum(pendingSalaries, "NET_SALARY");
       const netCashFlow = amountCollected - payrollPaid;
       const senseiName = id => senseiRows.find(row => String(row.ID_SENSEI) === String(id))?.NAMA || "Sensei tidak ditemukan";
+      const studentName = id => students.find(row => String(row.ID_SISWA) === String(id))?.NAMA || "-";
 
       el.innerHTML = `
         ${pageHeader("Laporan Keuangan", "Rekap tagihan, penerimaan, piutang, dan payroll per bulan.")}
@@ -1516,6 +1586,7 @@ window.App = (() => {
           <div class="card">${renderTable(monthlyBillings, [
             { key: "BILLING_ID", label: "ID Tagihan", render: value => esc(value || "") },
             { key: "ID_SISWA", label: "ID Siswa", render: value => esc(value || "") },
+            { key: "NAMA", label: "Nama Siswa", render: (value, row) => esc(studentName(row.ID_SISWA)) },
             { key: "DESCRIPTION", label: "Deskripsi", render: value => esc(value || "") },
             { key: "DUE_DATE", label: "Jatuh Tempo", render: value => esc(String(value || "").slice(0, 10)) },
             { key: "STATUS", label: "Status", render: value => esc(value || "") },
@@ -1529,6 +1600,7 @@ window.App = (() => {
             { key: "PAYMENT_DATE", label: "Tanggal", render: value => esc(String(value || "").slice(0, 10)) },
             { key: "PAYMENT_ID", label: "ID Pembayaran", render: value => esc(value || "") },
             { key: "ID_SISWA", label: "ID Siswa", render: value => esc(value || "") },
+            { key: "NAMA", label: "Nama Siswa", render: (value, row) => esc(studentName(row.ID_SISWA)) },
             { key: "BILLING_ID", label: "ID Tagihan", render: value => esc(value || "") },
             { key: "PAYMENT_METHOD", label: "Metode", render: value => esc(value || "") },
             { key: "AMOUNT", label: "Nominal", render: value => formatRupiah(value) }
@@ -1558,8 +1630,8 @@ window.App = (() => {
       qs("#export-finance-csv", el)?.addEventListener("click", () => {
         const records = [
           ["Jenis", "Tanggal/Periode", "ID", "Pihak", "Keterangan", "Status", "Nominal"],
-          ...monthlyBillings.map(row => ["TAGIHAN", row.DUE_DATE, row.BILLING_ID, row.ID_SISWA, row.DESCRIPTION, row.STATUS, row.AMOUNT]),
-          ...monthlyPayments.map(row => ["PEMBAYARAN", row.PAYMENT_DATE, row.PAYMENT_ID, row.ID_SISWA, row.PAYMENT_METHOD, "DITERIMA", row.AMOUNT]),
+          ...monthlyBillings.map(row => ["TAGIHAN", row.DUE_DATE, row.BILLING_ID, studentName(row.ID_SISWA), row.DESCRIPTION, row.STATUS, row.AMOUNT]),
+          ...monthlyPayments.map(row => ["PEMBAYARAN", row.PAYMENT_DATE, row.PAYMENT_ID, studentName(row.ID_SISWA), row.PAYMENT_METHOD, "DITERIMA", row.AMOUNT]),
           ...monthlySalaries.map(row => ["PAYROLL", row.PERIOD, row.SALARY_ID, senseiName(row.ID_SENSEI), row.ID_SENSEI, row.PAYMENT_STATUS, row.NET_SALARY])
         ];
         const csv = "\uFEFF" + records.map(row => row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
@@ -1911,7 +1983,7 @@ window.App = (() => {
               <option value="">Pilih ID Sensei...</option>
               ${senseiRows.map(row => `
                 <option value="${esc(row.ID_SENSEI)}" ${String(value) === String(row.ID_SENSEI) ? "selected" : ""}>
-                  ${esc(row.ID_SENSEI)} · ${esc(row.NAMA || "Tanpa nama")}
+                  ${esc(row.NAMA || "Tanpa nama")} · ${esc(row.ID_SENSEI)}
                 </option>
               `).join("")}
             </select>
@@ -1933,7 +2005,54 @@ window.App = (() => {
               <option value="">Pilih siswa...</option>
               ${studentRows.filter(row => String(row.ID_SISWA || "").trim()).map(row => `
                 <option value="${esc(row.ID_SISWA)}" ${String(value) === String(row.ID_SISWA) ? "selected" : ""}>
-                  ${esc(row.ID_SISWA)} · ${esc(row.NAMA || "Tanpa nama")}
+                  ${esc(row.NAMA || "Tanpa nama")} · ${esc(row.ID_SISWA)}
+                </option>
+              `).join("")}
+              ${legacyOption}
+            </select>
+          </div>
+        `;
+      }
+
+      if (type === "payments" && field.key === "ID_SISWA") {
+        const studentRows = Array.isArray(options.studentRows) ? options.studentRows : [];
+        const knownIds = studentRows.map(row => String(row.ID_SISWA || "").trim()).filter(Boolean);
+        const legacyOption = value && !knownIds.includes(String(value))
+          ? `<option value="${esc(value)}" selected>${esc(value)} · Siswa tidak ditemukan</option>`
+          : "";
+        return `
+          <div class="form-group">
+            <label for="payment-student-select">ID Siswa <span>*</span></label>
+            <select id="payment-student-select" name="ID_SISWA" required>
+              <option value="">Pilih siswa...</option>
+              ${studentRows.filter(row => String(row.ID_SISWA || "").trim()).map(row => `
+                <option value="${esc(row.ID_SISWA)}" ${String(value) === String(row.ID_SISWA) ? "selected" : ""}>
+                  ${esc(row.NAMA || "Tanpa nama")} · ${esc(row.ID_SISWA)}
+                </option>
+              `).join("")}
+              ${legacyOption}
+            </select>
+          </div>
+        `;
+      }
+
+      if (type === "payments" && field.key === "BILLING_ID") {
+        const billingRows = Array.isArray(options.billingRows) ? options.billingRows : [];
+        const knownIds = billingRows.map(row => String(row.BILLING_ID || "").trim()).filter(Boolean);
+        const legacyOption = value && !knownIds.includes(String(value))
+          ? `<option value="${esc(value)}" selected>${esc(value)}</option>`
+          : "";
+        return `
+          <div class="form-group">
+            <label for="payment-billing-select">ID Tagihan <span>*</span></label>
+            <select id="payment-billing-select" name="BILLING_ID" required>
+              <option value="">Pilih tagihan...</option>
+              ${billingRows.filter(row => String(row.BILLING_ID || "").trim()).map(row => `
+                <option value="${esc(row.BILLING_ID)}"
+                        data-student-id="${esc(row.ID_SISWA || "")}"
+                        data-amount="${esc(row.AMOUNT || 0)}"
+                        ${String(value) === String(row.BILLING_ID) ? "selected" : ""}>
+                  ${esc(row.BILLING_ID)} · ${esc(row.DESCRIPTION || "")} · ${formatRupiah(row.AMOUNT || 0)}
                 </option>
               `).join("")}
               ${legacyOption}
@@ -2076,6 +2195,43 @@ window.App = (() => {
       refreshPayrollPreview();
     }
 
+    if (type === "payments") {
+      const studentSelect = qs("#payment-student-select", modal);
+      const billingSelect = qs("#payment-billing-select", modal);
+      const amountInput = form?.elements.AMOUNT;
+
+      if (billingSelect) {
+        const allOptions = Array.from(billingSelect.querySelectorAll("option"))
+          .filter(opt => opt.value)
+          .map(opt => ({
+            value: opt.value,
+            studentId: String(opt.dataset.studentId || "").trim(),
+            html: opt.outerHTML
+          }));
+
+        const rebuildBillingOptions = () => {
+          const sid = String(studentSelect?.value || "").trim();
+          const filtered = sid ? allOptions.filter(o => o.studentId === sid) : allOptions;
+          const current = billingSelect.value;
+          billingSelect.innerHTML = `<option value="">Pilih tagihan...</option>` + filtered.map(o => o.html).join("");
+          if (Array.from(billingSelect.options).some(o => o.value === current)) {
+            billingSelect.value = current;
+          }
+        };
+
+        const fillFromBilling = () => {
+          const opt = billingSelect.options[billingSelect.selectedIndex];
+          if (!opt || !opt.value) return;
+          if (studentSelect && opt.dataset.studentId) studentSelect.value = opt.dataset.studentId;
+          if (amountInput && opt.dataset.amount) amountInput.value = opt.dataset.amount;
+        };
+
+        studentSelect?.addEventListener("change", rebuildBillingOptions);
+        billingSelect?.addEventListener("change", fillFromBilling);
+        if (studentSelect?.value) rebuildBillingOptions();
+      }
+    }
+
     form?.addEventListener("submit", async event => {
       event.preventDefault();
 
@@ -2112,6 +2268,14 @@ window.App = (() => {
           const url = new URL(window.location.href);
           if (payload.ID_SISWA) url.searchParams.set("studentId", payload.ID_SISWA);
           window.history.replaceState({}, "", url);
+        }
+
+        if (type === "payments") {
+          const url = new URL(window.location.href);
+          if (payload.ID_SISWA) url.searchParams.set("studentId", payload.ID_SISWA);
+          window.history.replaceState({}, "", url);
+          await load("billing");
+          return;
         }
 
         await load(type);
