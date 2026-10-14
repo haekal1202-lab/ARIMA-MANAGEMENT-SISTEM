@@ -45,8 +45,8 @@
         </header>
         <section class="attendance-panel attendance-login-panel">
           <span class="attendance-kicker">SISWA &amp; SENSEI</span>
-          <h1>Login Absensi</h1>
-          <p class="attendance-muted">Gunakan ID dan password akun Anda.</p>
+          <h1>ログイン</h1>
+          <p class="attendance-muted">アカウントのIDとパスワードを入力してください。</p>
           <form id="attendance-login-form" class="attendance-form">
             <label for="attendance-login-id">ID Pengguna</label>
             <input id="attendance-login-id" name="userId" autocomplete="username" required>
