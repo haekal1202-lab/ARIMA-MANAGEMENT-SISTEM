@@ -36,11 +36,11 @@ window.App = (() => {
         { key: "PROGRAM", label: "Program", type: "select", required: true, options: ["MAGANG", "SSW", "ENGINEERING", "ENGINEER"] },
         { key: "ASRAMA", label: "Asrama", type: "select", required: true, options: ["YA", "TIDAK"] },
         { key: "TANGGAL_MASUK", label: "Tanggal Masuk", type: "date", required: true },
-        { key: "STATUS", label: "Status", type: "select", required: true, options: ["AKTIF", "NONAKTIF", "LULUS", "KELUAR"] }
         { key: "SSW", label: "Ikut Program SSW", type: "select", required: false, options: ["YA", "TIDAK"] },
         { key: "SSW_DETAIL", label: "Bidang SSW", type: "select", required: false, options: ["KAIGO", "FOOD SERVICE", "CONSTRUCTION", "AGRICULTURE", "BUILDING CLEANING", "MANUFACTURING", "FISHERY", "AUTO MAINTENANCE", "LAINNYA"] },
         { key: "JFT_JLPT", label: "Sertifikat Bahasa Jepang", type: "select", required: false, options: ["TIDAK ADA", "JFT-BASIC", "JLPT N5", "JLPT N4", "JLPT N3", "JLPT N2", "JLPT N1"] },
         { key: "JFT_JLPT_DATE", label: "Tanggal Sertifikat", type: "date", required: false },
+        { key: "STATUS", label: "Status", type: "select", required: true, options: ["AKTIF", "NONAKTIF", "LULUS", "KELUAR"] }
       ]
     },
 
