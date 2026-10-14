@@ -25,7 +25,9 @@ const WRITE_ACTIONS_ = Object.freeze([
   'assignStudentIds', 'assignSenseiIds', 'selfAttendance', 'generateUserIds',
   'userCreate', 'userReset', 'userDelete',
   'studentSave', 'studentDelete', 'senseiSave', 'senseiDelete',
-  'attendanceSave', 'billingSave', 'paymentSave', 'financeSave', 'salarySave'
+  'attendanceSave', 'billingSave', 'billingDelete',
+  'paymentSave', 'paymentDelete',
+  'financeSave', 'salarySave', 'salaryDelete', 'salaryEmail'
 ]);
 
 function doPost(e) {
@@ -156,6 +158,22 @@ function route_(action, p, token) {
       const paymentSaveAccessError = accountAccessError_(token);
       if (paymentSaveAccessError) return paymentSaveAccessError;
       return saveSheetRecord_('PAYMENTS', 'PAYMENT_ID', p);
+    case 'paymentDelete':
+      const paymentDeleteAccessError = accountAccessError_(token);
+      if (paymentDeleteAccessError) return paymentDeleteAccessError;
+      return deletePaymentRecord_(p);
+    case 'billingDelete':
+      const billingDeleteAccessError = accountAccessError_(token);
+      if (billingDeleteAccessError) return billingDeleteAccessError;
+      return deleteBillingRecord_(p);
+    case 'salaryDelete':
+      const salaryDeleteAccessError = salaryAccessError_(token);
+      if (salaryDeleteAccessError) return salaryDeleteAccessError;
+      return deleteSheetRecord_('SALARY', 'SALARY_ID', p);
+    case 'salaryEmail':
+      const salaryEmailAccessError = salaryAccessError_(token);
+      if (salaryEmailAccessError) return salaryEmailAccessError;
+      return emailSalarySlip_(p);
     case 'financeSave':
       const financeSaveAccessError = accountAccessError_(token);
       if (financeSaveAccessError) return financeSaveAccessError;
@@ -1562,10 +1580,218 @@ function saveSheetRecord_(sheetName, keyField, payload) {
     rowNumber = sh.getLastRow();
   }
 
+  // Auto-sync PAYMENTS -> FINANCE
+  if (sheetName === 'PAYMENTS') {
+    const paymentObj = {};
+    headers.forEach((header, idx) => { paymentObj[header] = row[idx]; });
+    paymentObj.PAYMENT_ID = String(row[keyIndex] || finalKey);
+    const syncResult = syncPaymentToFinance_(paymentObj);
+    if (!syncResult.success) {
+      // Data pembayaran sudah tersimpan; log warning tapi jangan gagalkan simpan
+      console.warn('Gagal sync pembayaran ke FINANCE:', syncResult.message);
+    }
+  }
+
   return {
     success: true,
     message: isUpdate ? 'Data berhasil diperbarui.' : 'Data berhasil ditambahkan.',
     data: { [keyField]: row[keyIndex], __ROW_NUMBER: rowNumber }
+  };
+}
+
+/* =========================================================
+ * AUTO-SYNC PEMBAYARAN KE FINANCE
+ * ========================================================= */
+
+function syncPaymentToFinance_(payment) {
+  const sheetResult = financeSheet_();
+  if (!sheetResult.success) return { success: false, message: sheetResult.message };
+
+  const financeRows = listSheet_('FINANCE');
+  if (!financeRows.success) return financeRows;
+
+  const paymentId = String(payment.PAYMENT_ID || '').trim();
+  if (!paymentId) return { success: false, message: 'PAYMENT_ID kosong, tidak dapat sync ke FINANCE.' };
+
+  // Hindari double-count: cek apakah sudah ada FINANCE dengan REFERENCE_NO = PAYMENT_ID
+  const existing = (financeRows.data || []).find(row =>
+    String(row.REFERENCE_NO || '').trim().toUpperCase() === paymentId.toUpperCase()
+  );
+  if (existing) {
+    return { success: true, skipped: true, message: 'Mutasi keuangan untuk pembayaran ini sudah tercatat.' };
+  }
+
+  // Ambil info tagihan untuk kategori
+  const billingSheet = ss_().getSheetByName('BILLING');
+  let billingCategory = '';
+  if (billingSheet) {
+    const billingValues = billingSheet.getDataRange().getValues();
+    if (billingValues.length > 1) {
+      const headers = billingValues[0].map(String);
+      const idIdx = findColumnIndex_(headers, ['BILLING_ID']);
+      const catIdx = findColumnIndex_(headers, ['CATEGORY']);
+      if (idIdx >= 0 && catIdx >= 0) {
+        const found = billingValues.slice(1).find(row =>
+          String(row[idIdx] || '').trim() === String(payment.BILLING_ID || '').trim()
+        );
+        if (found) billingCategory = String(found[catIdx] || '').trim();
+      }
+    }
+  }
+
+  const transactionId = 'FIN-' + paymentId;
+  const today = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyy-MM-dd');
+
+  const financeRecord = {
+    TRANSACTION_ID: transactionId,
+    DATE: String(payment.PAYMENT_DATE || today).slice(0, 10) || today,
+    TYPE: 'PEMASUKAN',
+    CATEGORY: billingCategory || 'SPP',
+    DESCRIPTION: 'Pembayaran ' + paymentId + (payment.BILLING_ID ? ' untuk tagihan ' + payment.BILLING_ID : ''),
+    AMOUNT: Number(payment.AMOUNT || 0),
+    PAYMENT_METHOD: String(payment.PAYMENT_METHOD || 'LAINNYA'),
+    REFERENCE_NO: paymentId,
+    NOTES: String(payment.NOTES || ''),
+    __MODE: 'create'
+  };
+
+  return saveSheetRecord_('FINANCE', 'TRANSACTION_ID', financeRecord);
+}
+
+/* =========================================================
+ * VALIDASI HAPUS TAGIHAN (tolak jika ada pembayaran)
+ * ========================================================= */
+
+function deleteBillingRecord_(payload) {
+  const record = payload && typeof payload === 'object' ? payload : {};
+  const billingId = String(record.BILLING_ID || '').trim();
+  if (!billingId) return { success: false, message: 'BILLING_ID wajib diisi.' };
+
+  const paymentsSheet = ss_().getSheetByName('PAYMENTS');
+  if (paymentsSheet && paymentsSheet.getLastRow() > 1) {
+    const values = paymentsSheet.getDataRange().getValues();
+    const headers = values[0].map(String);
+    const billingIdx = findColumnIndex_(headers, ['BILLING_ID']);
+    if (billingIdx >= 0) {
+      const relatedPayments = values.slice(1).filter(row =>
+        String(row[billingIdx] || '').trim() === billingId
+      );
+      if (relatedPayments.length) {
+        return {
+          success: false,
+          message: 'Tagihan tidak dapat dihapus karena sudah memiliki ' + relatedPayments.length +
+                   ' pembayaran tercatat. Hapus pembayaran terkait terlebih dahulu jika memang diperlukan.'
+        };
+      }
+    }
+  }
+
+  return deleteSheetRecord_('BILLING', 'BILLING_ID', payload);
+}
+
+/* =========================================================
+ * HAPUS PEMBAYARAN + HAPUS FINANCE TERKAIT
+ * ========================================================= */
+
+function deletePaymentRecord_(payload) {
+  const record = payload && typeof payload === 'object' ? payload : {};
+  const paymentId = String(record.PAYMENT_ID || '').trim();
+  if (!paymentId) return { success: false, message: 'PAYMENT_ID wajib diisi.' };
+
+  // Hapus dulu entri FINANCE yang REFERENCE_NO-nya = PAYMENT_ID
+  const financeSheet = ss_().getSheetByName('FINANCE');
+  if (financeSheet && financeSheet.getLastRow() > 1) {
+    const values = financeSheet.getDataRange().getValues();
+    const headers = values[0].map(String);
+    const refIdx = findColumnIndex_(headers, ['REFERENCE_NO']);
+    if (refIdx >= 0) {
+      for (let i = values.length - 1; i >= 1; i -= 1) {
+        if (String(values[i][refIdx] || '').trim().toUpperCase() === paymentId.toUpperCase()) {
+          financeSheet.deleteRow(i + 1);
+        }
+      }
+    }
+  }
+
+  return deleteSheetRecord_('PAYMENTS', 'PAYMENT_ID', payload);
+}
+
+/* =========================================================
+ * KIRIM SLIP GAJI SENSEI VIA EMAIL
+ * ========================================================= */
+
+function emailSalarySlip_(payload) {
+  const record = payload && typeof payload === 'object' ? payload : {};
+  const salaryId = String(record.SALARY_ID || '').trim();
+  const pdfBase64 = String(record.pdfBase64 || '').trim();
+
+  if (!salaryId) return { success: false, message: 'SALARY_ID wajib diisi.' };
+  if (!pdfBase64) return { success: false, message: 'File PDF slip gaji tidak tersedia.' };
+
+  const salarySheet = ss_().getSheetByName('SALARY');
+  if (!salarySheet) return { success: false, message: 'Sheet SALARY tidak ditemukan.' };
+  const salaryValues = salarySheet.getDataRange().getValues();
+  if (salaryValues.length < 2) return { success: false, message: 'Data payroll belum tersedia.' };
+  const salaryHeaders = salaryValues[0].map(String);
+  const salaryIdIdx = findColumnIndex_(salaryHeaders, ['SALARY_ID']);
+  const salaryRow = salaryValues.slice(1).find(row =>
+    String(row[salaryIdIdx] || '').trim() === salaryId
+  );
+  if (!salaryRow) return { success: false, message: 'Data payroll tidak ditemukan.' };
+
+  const salaryObj = {};
+  salaryHeaders.forEach((header, idx) => { salaryObj[header] = salaryRow[idx]; });
+
+  const senseiSheet = ss_().getSheetByName('SENSEI');
+  if (!senseiSheet) return { success: false, message: 'Sheet SENSEI tidak ditemukan.' };
+  const senseiValues = senseiSheet.getDataRange().getValues();
+  const senseiHeaders = senseiValues[0].map(String);
+  const senseiIdIdx = findColumnIndex_(senseiHeaders, ['ID_SENSEI']);
+  const senseiNameIdx = findColumnIndex_(senseiHeaders, ['NAMA']);
+  const senseiEmailIdx = findColumnIndex_(senseiHeaders, ['EMAIL']);
+  const senseiRow = senseiValues.slice(1).find(row =>
+    String(row[senseiIdIdx] || '').trim() === String(salaryObj.ID_SENSEI || '').trim()
+  );
+  if (!senseiRow) return { success: false, message: 'Data sensei tidak ditemukan.' };
+
+  const senseiName = String(senseiRow[senseiNameIdx] || 'Sensei');
+  const senseiEmail = String(senseiRow[senseiEmailIdx] || '').trim();
+  if (!senseiEmail || senseiEmail.indexOf('@') < 0) {
+    return { success: false, message: 'Email sensei belum diisi atau tidak valid di data master.' };
+  }
+
+  const period = String(salaryObj.PERIOD || '').slice(0, 7);
+  const subject = 'Slip Gaji ' + period + ' - LPKS Arima Persada';
+  const bodyText = 'Yth. ' + senseiName + ',\n\n' +
+    'Terlampir slip gaji periode ' + period + '.\n\n' +
+    'Terima kasih.\nLPKS Arima Persada';
+  const bodyHtml = '<p>Yth. <strong>' + senseiName + '</strong>,</p>' +
+    '<p>Terlampir slip gaji periode <strong>' + period + '</strong>.</p>' +
+    '<p>Terima kasih.<br>LPKS Arima Persada</p>';
+
+  const fileName = 'slip-gaji-' + salaryId + '.pdf';
+
+  try {
+    MailApp.sendEmail({
+      to: senseiEmail,
+      subject: subject,
+      body: bodyText,
+      htmlBody: bodyHtml,
+      name: 'LPKS Arima Persada',
+      attachments: [Utilities.newBlob(
+        Utilities.base64Decode(pdfBase64),
+        'application/pdf',
+        fileName
+      )]
+    });
+  } catch (err) {
+    return { success: false, message: 'Gagal mengirim email: ' + (err && err.message ? err.message : err) };
+  }
+
+  return {
+    success: true,
+    message: 'Slip gaji berhasil dikirim ke ' + senseiEmail + '.',
+    data: { email: senseiEmail, salaryId: salaryId }
   };
 }
 
