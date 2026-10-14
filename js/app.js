@@ -33,11 +33,11 @@ window.App = (() => {
         { key: "NO_WA", label: "No. WhatsApp", type: "text", required: true, placeholder: "08xxxxxxxxxx" },
         { key: "NAMA_ORANG_TUA", label: "Nama Orang Tua / Wali", type: "text", required: true, placeholder: "Nama orang tua / wali" },
         { key: "NO_WA_ORANG_TUA", label: "No. WhatsApp Orang Tua / Wali", type: "text", required: false, placeholder: "08xxxxxxxxxx" },
-        { key: "PROGRAM", label: "Program", type: "select", required: true, options: ["MAGANG", "SSW", "ENGINEERING", "ENGINEER"] },
+        { key: "PROGRAM", label: "Program", type: "select", required: true, options: ["MAGANG", "TOKUTEI GINOU", "ENGINEER"] },
         { key: "ASRAMA", label: "Asrama", type: "select", required: true, options: ["YA", "TIDAK"] },
         { key: "TANGGAL_MASUK", label: "Tanggal Masuk", type: "date", required: true },
         { key: "SSW", label: "Ikut Program SSW", type: "select", required: false, options: ["YA", "TIDAK"] },
-        { key: "SSW_DETAIL", label: "Bidang SSW", type: "select", required: false, options: ["KAIGO", "FOOD SERVICE", "CONSTRUCTION", "AGRICULTURE", "BUILDING CLEANING", "MANUFACTURING", "FISHERY", "AUTO MAINTENANCE", "LAINNYA"] },
+        { key: "SSW_DETAIL", label: "Bidang SSW", type: "select", required: false, options: ["KAIGO", "FOOD SERVICE", "CONSTRUCTION", "AGRICULTURE", "BUILDING CLEANING", "MANUFACTURING", "FISHERY", "AUTO MAINTENANCE", "type: "text", required: true, placeholder: "LAINNYA"] },
         { key: "JFT_JLPT", label: "Sertifikat Bahasa Jepang", type: "select", required: false, options: ["TIDAK ADA", "JFT-BASIC", "JLPT N5", "JLPT N4", "JLPT N3", "JLPT N2", "JLPT N1"] },
         { key: "JFT_JLPT_DATE", label: "Tanggal Sertifikat", type: "date", required: false },
         { key: "STATUS", label: "Status", type: "select", required: true, options: ["AKTIF", "NONAKTIF", "LULUS", "KELUAR"] }
