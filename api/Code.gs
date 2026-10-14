@@ -342,13 +342,13 @@ function generateUserIds_() {
 function generatedAccountId_(name, phone) {
   const namePart = String(name || '').trim().match(/[A-Za-z]+/);
   const phoneDigits = String(phone || '').replace(/\D/g, '');
-  if (!namePart || namePart[0].length < 3) {
+  if (!namePart || namePart[0].length < 2) {
     return { success: false, message: 'Nama harus memiliki minimal 3 huruf untuk membuat ID akun.' };
   }
   if (phoneDigits.length < 4) {
     return { success: false, message: 'Nomor WhatsApp harus memiliki minimal 4 angka untuk membuat ID akun.' };
   }
-  return { success: true, id: namePart[0].slice(0, 3).toUpperCase() + phoneDigits.slice(-4) };
+  return { success: true, id: namePart[0].slice(0, 2).toUpperCase() + phoneDigits.slice(-4) };
 }
 
 function normalizedPersonName_(value) {
@@ -1635,7 +1635,24 @@ function saveSheetRecord_(sheetName, keyField, payload) {
   const row = isUpdate
     ? sh.getRange(rowNumber, 1, 1, headers.length).getValues()[0]
     : new Array(headers.length).fill('');
-  const finalKey = requestedKey || String(row[keyIndex] || '').trim() || nextRecordId_(sheetName, values, keyIndex);
+    let finalKey = requestedKey || String(row[keyIndex] || '').trim();
+  if (!finalKey) {
+    // Untuk master siswa/sensei, buat ID format baru: 3 huruf nama + 4 angka WA
+    if (sheetName === 'STUDENTS' || sheetName === 'SENSEI') {
+      const nameIdx = findColumnIndex_(headers, ['NAMA', 'NAME']);
+      const phoneIdx = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE']);
+      const nameVal = nameIdx >= 0 ? record[headers[nameIdx]] : '';
+      const phoneVal = phoneIdx >= 0 ? record[headers[phoneIdx]] : '';
+      const generated = generatedAccountId_(nameVal, phoneVal);
+      if (generated.success) {
+        const used = values.slice(1).some(r =>
+          String(r[keyIndex] || '').trim().toUpperCase() === generated.id.toUpperCase()
+        );
+        if (!used) finalKey = generated.id;
+      }
+    }
+    if (!finalKey) finalKey = nextRecordId_(sheetName, values, keyIndex);
+  }
 
   headers.forEach(function (header, index) {
     if (Object.prototype.hasOwnProperty.call(record, header) && header !== '__ROW_NUMBER') {
