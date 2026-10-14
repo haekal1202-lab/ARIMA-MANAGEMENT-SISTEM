@@ -111,7 +111,18 @@ window.App = (() => {
         { key: "CATEGORY", label: "Kategori", type: "select", required: true, options: ["BELAJAR", "ASRAMA", "JOB", "LAINNYA"] },
         { key: "AMOUNT", label: "Jumlah", type: "number", required: true, placeholder: "0" },
         { key: "DUE_DATE", label: "Jatuh Tempo", type: "date", required: true },
-        { key: "STATUS", label: "Status", type: "select", required: true, options: ["PENDING", "BELUM BAYAR", "BELUM LUNAS", "LUNAS", "TERTUNGGAK", "CICILAN"] },
+        { key: "STATUS", label: "Status", type: "select", required: true, options: ["BELUM BAYAR", "LUNAS", "TERTUNGGAK", "CICILAN"] },
+        {
+          key: "PENERIMA",
+          label: "Penerima / Penanggung Jawab",
+          type: "select",
+          required: false,
+          options: [
+            "Suwardi, S.T. - Direktur",
+            "Rachmat Septiadi Ujianto - Penanggung Jawab",
+            "M Irvan Haekal - Administrasi"
+          ]
+        },
         { key: "NOTES", label: "Catatan", type: "textarea", required: false }
       ]
     },
@@ -170,6 +181,17 @@ window.App = (() => {
         { key: "DEDUCTION", label: "Potongan", type: "number", required: false },
         { key: "PAYMENT_DATE", label: "Tanggal Pembayaran", type: "date", required: false },
         { key: "PAYMENT_STATUS", label: "Status Pembayaran", type: "select", required: true, options: ["PENDING", "DIBAYAR", "LUNAS"] },
+        {
+          key: "PENERIMA",
+          label: "Penerima / Penanggung Jawab",
+          type: "select",
+          required: false,
+          options: [
+            "Suwardi, S.T. - Direktur",
+            "Rachmat Septiadi Ujianto - Penanggung Jawab",
+            "M Irvan Haekal - Administrasi"
+          ]
+        },
         { key: "NOTES", label: "Catatan", type: "textarea", required: false }
       ]
     }
