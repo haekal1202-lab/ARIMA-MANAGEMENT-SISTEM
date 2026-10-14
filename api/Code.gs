@@ -1580,15 +1580,22 @@ function saveSheetRecord_(sheetName, keyField, payload) {
     rowNumber = sh.getLastRow();
   }
 
-  // Auto-sync PAYMENTS -> FINANCE
+  // Auto-sync PAYMENTS -> FINANCE + update status BILLING
   if (sheetName === 'PAYMENTS') {
     const paymentObj = {};
     headers.forEach((header, idx) => { paymentObj[header] = row[idx]; });
     paymentObj.PAYMENT_ID = String(row[keyIndex] || finalKey);
+
     const syncResult = syncPaymentToFinance_(paymentObj);
     if (!syncResult.success) {
-      // Data pembayaran sudah tersimpan; log warning tapi jangan gagalkan simpan
       console.warn('Gagal sync pembayaran ke FINANCE:', syncResult.message);
+    }
+
+    // Update status BILLING otomatis
+    try {
+      updateBillingStatusFromPayments_(String(paymentObj.BILLING_ID || '').trim());
+    } catch (err) {
+      console.warn('Gagal update status BILLING:', err && err.message ? err.message : err);
     }
   }
 
@@ -1656,6 +1663,59 @@ function syncPaymentToFinance_(payment) {
   };
 
   return saveSheetRecord_('FINANCE', 'TRANSACTION_ID', financeRecord);
+}
+
+/* =========================================================
+ * AUTO-UPDATE STATUS BILLING SETELAH PEMBAYARAN
+ * ========================================================= */
+
+function updateBillingStatusFromPayments_(billingId) {
+  if (!billingId) return;
+  const billingSheet = ss_().getSheetByName('BILLING');
+  const paymentsSheet = ss_().getSheetByName('PAYMENTS');
+  if (!billingSheet || !paymentsSheet) return;
+
+  const bValues = billingSheet.getDataRange().getValues();
+  if (bValues.length < 2) return;
+  const bHeaders = bValues[0].map(String);
+  const bIdIdx = findColumnIndex_(bHeaders, ['BILLING_ID']);
+  const bAmountIdx = findColumnIndex_(bHeaders, ['AMOUNT']);
+  const bStatusIdx = findColumnIndex_(bHeaders, ['STATUS']);
+  if (bIdIdx < 0 || bStatusIdx < 0) return;
+
+  // Cari baris billing
+  let rowNum = 0;
+  let totalBill = 0;
+  for (let i = 1; i < bValues.length; i += 1) {
+    if (String(bValues[i][bIdIdx] || '').trim() === billingId) {
+      rowNum = i + 1;
+      totalBill = Number(bValues[i][bAmountIdx] || 0);
+      break;
+    }
+  }
+  if (!rowNum) return;
+
+  // Hitung total pembayaran
+  const pValues = paymentsSheet.getDataRange().getValues();
+  if (pValues.length < 2) return;
+  const pHeaders = pValues[0].map(String);
+  const pBillingIdx = findColumnIndex_(pHeaders, ['BILLING_ID']);
+  const pAmountIdx = findColumnIndex_(pHeaders, ['AMOUNT']);
+  if (pBillingIdx < 0 || pAmountIdx < 0) return;
+
+  let totalPaid = 0;
+  for (let i = 1; i < pValues.length; i += 1) {
+    if (String(pValues[i][pBillingIdx] || '').trim() === billingId) {
+      totalPaid += Number(pValues[i][pAmountIdx] || 0);
+    }
+  }
+
+  // Tentukan status baru
+  let newStatus = 'BELUM BAYAR';
+  if (totalBill > 0 && totalPaid >= totalBill) newStatus = 'LUNAS';
+  else if (totalPaid > 0) newStatus = 'CICILAN';
+
+  billingSheet.getRange(rowNum, bStatusIdx + 1).setValue(newStatus);
 }
 
 /* =========================================================
