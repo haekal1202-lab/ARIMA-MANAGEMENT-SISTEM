@@ -1138,6 +1138,9 @@ window.App = (() => {
             ], {
               emptyText: "Belum ada tagihan untuk siswa ini.",
               actions: invoice => `
+                ${String(invoice.STATUS || "").trim().toUpperCase() === "LUNAS"
+                  ? `<span class="badge" style="background:#eaf5ef;color:#19724d;padding:6px 10px;border-radius:99px;font-size:11px;font-weight:700;">✓ LUNAS</span>`
+                  : `<button type="button" class="btn btn-small btn-primary" data-pay-billing="${esc(invoice.BILLING_ID || "")}">Bayar</button>`}
                 <button type="button" class="btn btn-small" data-edit-billing="${esc(invoice.BILLING_ID || "")}">Edit</button>
                 <button type="button" class="btn btn-small" data-download-invoice="${esc(invoice.BILLING_ID || "")}">Unduh PDF</button>
                 <button type="button" class="btn btn-small btn-light" data-send-invoice="${esc(invoice.BILLING_ID || "")}">WhatsApp</button>
@@ -1182,6 +1185,21 @@ window.App = (() => {
             button.disabled = false;
             showToast(error.message || "Gagal menghapus tagihan.", "error");
           }
+        }));
+                qsa("[data-pay-billing]", resultRoot).forEach(button => button.addEventListener("click", () => {
+          const invoice = studentInvoices.find(row => String(row.BILLING_ID) === String(button.dataset.payBilling));
+          if (!invoice) return;
+          const today = new Date().toISOString().slice(0, 10);
+          openFormModal("payments", null, {
+            defaults: {
+              BILLING_ID: invoice.BILLING_ID || "",
+              ID_SISWA: invoice.ID_SISWA || student.ID_SISWA || "",
+              PAYMENT_DATE: today,
+              AMOUNT: invoice.AMOUNT || 0,
+              PAYMENT_METHOD: "CASH",
+              NOTES: "Pembayaran untuk tagihan " + (invoice.DESCRIPTION || invoice.BILLING_ID)
+            }
+          });
         }));
       }
 
