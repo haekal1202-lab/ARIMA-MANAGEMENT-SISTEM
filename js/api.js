@@ -43,81 +43,48 @@ window.API = (() => {
   }
 
   async function call(action, payload = {}) {
-
     const config = window.ARIMA_CONFIG;
-
     if (!config || !config.API_URL) {
-      throw new Error(
-        "API_URL ARIMA Apps belum dikonfigurasi."
-      );
+      throw new Error("API_URL ARIMA Apps belum dikonfigurasi.");
     }
 
-    const response = await fetch(
-      config.API_URL,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "text/plain;charset=utf-8"
-        },
-
-        body: JSON.stringify({
-          action: action,
-          payload: payload,
-          token: getToken()
-        })
-      }
-    );
+    const response = await fetch(config.API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify({
+        action: action,
+        payload: payload,
+        token: getToken()
+      })
+    });
 
     const text = await response.text();
-
     let result;
 
     try {
       result = JSON.parse(text);
     } catch (error) {
-
-      console.error(
-        "Response ARIMA Apps:",
-        text
-      );
-
-      throw new Error(
-        "ARIMA Apps mengembalikan response yang bukan JSON."
-      );
+      console.error("Response ARIMA Apps:", text);
+      throw new Error("ARIMA Apps mengembalikan response yang bukan JSON.");
     }
 
-    if (
-      result &&
-      result.code === "AUTH_REQUIRED"
-    ) {
+    if (result && result.code === "AUTH_REQUIRED") {
       clearToken();
-
-      throw new Error(
-        result.message ||
-        "Session tidak valid. Silakan login kembali."
-      );
+      throw new Error(result.message || "Session tidak valid. Silakan login kembali.");
     }
 
     return result;
   }
 
   async function login(userId, password) {
+    const result = await call("login", {
+      userId: String(userId || "").trim(),
+      password: String(password || "")
+    });
 
-    const result = await call(
-      "login",
-      {
-        userId: String(userId || "").trim(),
-        password: String(password || "")
-      }
-    );
-
-    if (
-      result &&
-      result.success === true &&
-      result.token
-    ) {
+    if (result && result.success === true && result.token) {
       saveToken(result.token);
     }
 
@@ -125,20 +92,13 @@ window.API = (() => {
   }
 
   async function logout() {
-
     try {
       await call("logout", {});
     } catch (error) {
-      console.warn(
-        "Logout API:",
-        error
-      );
+      console.warn("Logout API:", error);
     }
-
     clearToken();
-    localStorage.removeItem(
-      "arima_session"
-    );
+    localStorage.removeItem("arima_session");
   }
 
   async function health() {
@@ -257,6 +217,22 @@ window.API = (() => {
     return call("salarySave", payload);
   }
 
+  async function billingDelete(payload) {
+    return call("billingDelete", payload);
+  }
+
+  async function paymentDelete(payload) {
+    return call("paymentDelete", payload);
+  }
+
+  async function salaryDelete(payload) {
+    return call("salaryDelete", payload);
+  }
+
+  async function salaryEmail(payload) {
+    return call("salaryEmail", payload);
+  }
+
   async function create(type, payload = {}) {
     const action = saveActions[String(type || "").toLowerCase()];
     if (!action) throw new Error("Aksi tambah tidak tersedia untuk " + type + ".");
@@ -292,81 +268,47 @@ window.API = (() => {
   }
   
   return {
-
     call,
-
     login,
-
     logout,
-
     health,
-
     dashboard,
-
     students,
-
     assignStudentIds,
-
     assignSenseiIds,
-
     sensei,
-
     attendance,
-
     attendanceProfile,
-
     selfAttendance,
-
     billing,
-
     payments,
-
     finance,
-
     salary,
-
     salaryPreview,
-
     users,
-
     generateUserIds,
-
     userCreate,
-
     userReset,
-
     userDelete,
-
     reports,
-
     studentSave,
-
     studentDelete,
-
     senseiSave,
-
     senseiDelete,
-
     attendanceSave,
-
     billingSave,
-
     paymentSave,
-
     financeSave,
-
     salarySave,
-
+    billingDelete,
+    paymentDelete,
+    salaryDelete,
+    salaryEmail,
     create,
-
     update,
-
     delete: deleteRecord,
-
     getToken,
-
     saveToken,
-
     clearToken
 
     billingDelete,
@@ -378,5 +320,4 @@ window.API = (() => {
     salaryEmail,
 
   };
-
 })();
