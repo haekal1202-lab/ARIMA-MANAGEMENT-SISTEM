@@ -27,7 +27,8 @@ const WRITE_ACTIONS_ = Object.freeze([
   'studentSave', 'studentDelete', 'senseiSave', 'senseiDelete',
   'attendanceSave', 'billingSave', 'billingDelete',
   'paymentSave', 'paymentDelete',
-  'financeSave', 'salarySave', 'salaryDelete', 'salaryEmail'
+  'financeSave', 'salarySave', 'salaryDelete', 'salaryEmail',
+  'attendancePhotoUpload'
 ]);
 
 function doPost(e) {
@@ -184,6 +185,10 @@ function route_(action, p, token) {
       const salarySaveAccessError = salaryAccessError_(token);
       if (salarySaveAccessError) return salarySaveAccessError;
       return saveSheetRecord_('SALARY', 'SALARY_ID', p);
+    case 'attendancePhotoUpload':
+      const photoAccessError = attendanceRoleError_(token);
+      if (photoAccessError) return photoAccessError;
+      return uploadAttendancePhoto_(p);
     default:
       return { success: false, message: 'Unknown action: ' + action };
   }
@@ -419,6 +424,34 @@ function accountMasterPerson_(role, masterId, accountName) {
   };
 }
 
+function uploadAttendancePhoto_(payload) {
+  const data = payload && typeof payload === 'object' ? payload : {};
+  const type = String(data.type || 'PHOTO').toUpperCase();
+  const base64 = String(data.base64 || '').trim();
+  const mimeType = String(data.mimeType || 'image/jpeg');
+  const fileName = String(data.fileName || (type + '.jpg')).replace(/[^A-Za-z0-9_.-]/g, '_');
+  if (!base64) return { success: false, message: 'Data foto kosong.' };
+
+  try {
+    const folderName = 'ARIMA_ATTENDANCE_PHOTOS';
+    let folder;
+    const found = DriveApp.getFoldersByName(folderName);
+    folder = found.hasNext() ? found.next() : DriveApp.createFolder(folderName);
+
+    const timestamp = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyyMMdd-HHmmss');
+    const fullName = type + '_' + timestamp + '_' + fileName;
+
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64), mimeType, fullName);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    const url = 'https://drive.google.com/uc?export=view&id=' + file.getId();
+    return { success: true, message: 'Foto berhasil diunggah.', data: { url: url, fileId: file.getId() } };
+  } catch (err) {
+    return { success: false, message: 'Gagal mengunggah foto: ' + (err && err.message ? err.message : err) };
+  }
+}
+
 function linkedAccountPerson_(role, userId) {
   if (role !== 'SISWA' && role !== 'SENSEI') return { success: true, person: null };
   let masterId = String(userId || '').trim();
@@ -557,7 +590,17 @@ function attendanceForToday_(actorId, actorType) {
     CATATAN: get('CATATAN')
   };
   if (actorType === 'SENSEI') {
-    const paid = paidTeachingMinutes_(startMinutes, endMinutes);
+    const bs = get('ISTIRAHAT_MULAI');
+    const be = get('ISTIRAHAT_SELESAI');
+    result.ISTIRAHAT_MULAI = bs ? clockLabel_(clockMinutes_(bs)) : '';
+    result.ISTIRAHAT_SELESAI = be ? clockLabel_(clockMinutes_(be)) : '';
+    result.FOTO_KELAS_URL = get('FOTO_KELAS_URL');
+    result.FOTO_ABSENSI_URL = get('FOTO_ABSENSI_URL');
+  }
+  if (actorType === 'SENSEI') {
+    const bsMinutes = clockMinutes_(get('ISTIRAHAT_MULAI'));
+    const beMinutes = clockMinutes_(get('ISTIRAHAT_SELESAI'));
+    const paid = paidTeachingMinutes_(startMinutes, endMinutes, bsMinutes, beMinutes);
     result.DURASI_MENIT = paid;
     result.JP = paid === null ? null : Math.round((paid / 45) * 100) / 100;
   }
@@ -632,6 +675,12 @@ function saveOwnAttendance_(payload, token) {
     STATUS: status,
     CATATAN: String(record.CATATAN || '')
   };
+  if (actorType === 'SENSEI') {
+    attendance.ISTIRAHAT_MULAI = String(record.ISTIRAHAT_MULAI || '');
+    attendance.ISTIRAHAT_SELESAI = String(record.ISTIRAHAT_SELESAI || '');
+    attendance.FOTO_KELAS_URL = String(record.FOTO_KELAS_URL || '');
+    attendance.FOTO_ABSENSI_URL = String(record.FOTO_ABSENSI_URL || '');
+  }
 
   if (existing) {
     attendance.ATTENDANCE_ID = existing.row[keyIndex];
@@ -1367,20 +1416,22 @@ function attendanceActorType_(value) {
   return type;
 }
 
-function paidTeachingMinutes_(start, end) {
+function paidTeachingMinutes_(start, end, breakStart, breakEnd) {
   if (start === null || end === null || start === end) return null;
 
   const startAt = start;
   const endAt = end > start ? end : end + 1440;
   let paidMinutes = endAt - startAt;
-  const breaks = [[600, 615], [720, 795]];
 
-  for (let dayStart = Math.floor(startAt / 1440) * 1440; dayStart < endAt; dayStart += 1440) {
-    breaks.forEach(function (pause) {
-      const overlapStart = Math.max(startAt, dayStart + pause[0]);
-      const overlapEnd = Math.min(endAt, dayStart + pause[1]);
+  // Istirahat dari record (jika ada)
+  if (breakStart !== null && breakEnd !== null && breakStart !== breakEnd) {
+    const bs = breakStart;
+    const be = breakEnd > breakStart ? breakEnd : breakEnd + 1440;
+    for (let dayStart = Math.floor(startAt / 1440) * 1440; dayStart < endAt; dayStart += 1440) {
+      const overlapStart = Math.max(startAt, dayStart + bs);
+      const overlapEnd = Math.min(endAt, dayStart + be);
       paidMinutes -= Math.max(0, overlapEnd - overlapStart);
-    });
+    }
   }
 
   return Math.max(0, paidMinutes);
@@ -1439,8 +1490,34 @@ function calculateSalaryRecord_(record) {
     if (periodKey_(row[dateIndex]) !== period) return;
     if (status !== 'HADIR' && status !== 'TERLAMBAT') return;
 
+  if (sheetName === 'ATTENDANCE' && attendanceActorType_(record.ACTOR_TYPE) === 'SENSEI') {
+    const status = String(record.STATUS || '').trim().toUpperCase();
+    if (status === 'HADIR' || status === 'TERLAMBAT') {
+      const start = clockMinutes_(record.JAM_MASUK);
+      const end = clockMinutes_(record.JAM_KELUAR);
+      if (start === null || end === null) {
+        return { success: false, message: 'Absensi hadir sensei wajib memiliki jam mulai dan selesai yang valid.' };
+      }
+      if (start === end) {
+        return { success: false, message: 'Jam mulai dan selesai tidak boleh sama.' };
+      }
+      const bs = clockMinutes_(record.ISTIRAHAT_MULAI);
+      const be = clockMinutes_(record.ISTIRAHAT_SELESAI);
+      if ((bs === null) !== (be === null)) {
+        return { success: false, message: 'Istirahat harus diisi lengkap (mulai dan selesai), atau dikosongkan keduanya.' };
+      }
+      if (bs !== null && be !== null && bs === be) {
+        return { success: false, message: 'Jam istirahat mulai dan selesai tidak boleh sama.' };
+      }
+    }
+  }
+
     meetingCount += 1;
-    const paidMinutes = paidTeachingMinutes_(clockMinutes_(row[startIndex]), clockMinutes_(row[endIndex]));
+    const bsIdx = findColumnIndex_(headers, ['ISTIRAHAT_MULAI']);
+    const beIdx = findColumnIndex_(headers, ['ISTIRAHAT_SELESAI']);
+    const bs = bsIdx >= 0 ? clockMinutes_(row[bsIdx]) : null;
+    const be = beIdx >= 0 ? clockMinutes_(row[beIdx]) : null;
+    const paidMinutes = paidTeachingMinutes_(clockMinutes_(row[startIndex]), clockMinutes_(row[endIndex]), bs, be);
     if (paidMinutes === null) {
       incompleteTimes += 1;
       return;
