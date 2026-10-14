@@ -37,8 +37,32 @@ window.App = (() => {
         { key: "ASRAMA", label: "Asrama", type: "select", required: true, options: ["YA", "TIDAK"] },
         { key: "TANGGAL_MASUK", label: "Tanggal Masuk", type: "date", required: true },
         { key: "SSW", label: "Ikut Program SSW", type: "select", required: false, options: ["YA", "TIDAK"] },
-        { key: "SSW_DETAIL", label: "Bidang SSW", type: "select", required: false, options: ["KAIGO", "FOOD SERVICE", "CONSTRUCTION", "AGRICULTURE", "BUILDING CLEANING", "MANUFACTURING", "FISHERY", "AUTO MAINTENANCE", "type: "text", required: true, placeholder: "LAINNYA"] },
-        { key: "JFT_JLPT", label: "Sertifikat Bahasa Jepang", type: "select", required: false, options: ["TIDAK ADA", "JFT-BASIC", "JLPT N5", "JLPT N4", "JLPT N3", "JLPT N2", "JLPT N1"] },
+        {
+          key: "SSW_DETAIL",
+          label: "Bidang SSW",
+          type: "combo",
+          required: false,
+          placeholder: "Pilih atau ketik bidang SSW...",
+          options: [
+            "KAIGO",
+            "FOOD SERVICE",
+            "CONSTRUCTION",
+            "AGRICULTURE",
+            "BUILDING CLEANING",
+            "MANUFACTURING",
+            "FISHERY",
+            "AUTO MAINTENANCE",
+            "LAINNYA"
+          ]
+        },
+        {
+          key: "JFT_JLPT",
+          label: "Sertifikat Bahasa Jepang",
+          type: "combo",
+          required: false,
+          placeholder: "Pilih atau ketik sertifikat...",
+          options: ["TIDAK ADA", "JFT-BASIC", "JLPT N5", "JLPT N4", "JLPT N3", "JLPT N2", "JLPT N1"]
+        },
         { key: "JFT_JLPT_DATE", label: "Tanggal Sertifikat", type: "date", required: false },
         { key: "STATUS", label: "Status", type: "select", required: true, options: ["AKTIF", "NONAKTIF", "LULUS", "KELUAR"] }
       ]
@@ -2281,6 +2305,27 @@ window.App = (() => {
         `;
       }
 
+      if (field.type === "combo") {
+        const listId = `combo-${type}-${field.key}`;
+        return `
+          <div class="form-group">
+            <label>${esc(field.label)} ${field.required ? "<span>*</span>" : ""}</label>
+            <input
+              type="text"
+              name="${esc(field.key)}"
+              value="${esc(value)}"
+              placeholder="${esc(field.placeholder || "Pilih atau ketik...")}"
+              list="${esc(listId)}"
+              ${field.required ? "required" : ""}
+              autocomplete="off"
+            />
+            <datalist id="${esc(listId)}">
+              ${(field.options || []).map(option => `<option value="${esc(option)}"></option>`).join("")}
+            </datalist>
+          </div>
+        `;
+      }
+      
       if (field.type === "select") {
         return `
           <div class="form-group">
