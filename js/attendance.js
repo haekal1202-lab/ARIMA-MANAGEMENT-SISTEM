@@ -261,7 +261,7 @@
           <input type="time" class="break-start" value="${escapeHtml(b[0] || "")}">
           <span class="break-sep">–</span>
           <input type="time" class="break-end" value="${escapeHtml(b[1] || "")}">
-          <button type="button" class="btn btn-small btn-danger remove-break-btn" data-idx="${idx}">×</button>
+          <button type="button" class="remove-break-btn" data-idx="${idx}" title="Hapus istirahat ini">Hapus</button>
         </div>
       `).join("");
 
