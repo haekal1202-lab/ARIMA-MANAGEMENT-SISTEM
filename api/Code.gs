@@ -585,15 +585,24 @@ function attendanceForToday_(actorId, actorType) {
     CATATAN: get('CATATAN')
   };
   if (actorType === 'SENSEI') {
-    const bs = get('ISTIRAHAT_MULAI');
-    const be = get('ISTIRAHAT_SELESAI');
-    result.ISTIRAHAT_MULAI = bs ? clockLabel_(clockMinutes_(bs)) : '';
-    result.ISTIRAHAT_SELESAI = be ? clockLabel_(clockMinutes_(be)) : '';
+    // Baca istirahat dari JSON, fallback ke single
+    let breaksArr = [];
+    const jsonRaw = get('ISTIRAHAT_JSON');
+    if (jsonRaw) {
+      try { breaksArr = JSON.parse(jsonRaw); } catch (e) { breaksArr = []; }
+    }
+    if (!breaksArr.length) {
+      const bs = get('ISTIRAHAT_MULAI');
+      const be = get('ISTIRAHAT_SELESAI');
+      if (bs && be) breaksArr.push([clockLabel_(clockMinutes_(bs)), clockLabel_(clockMinutes_(be))]);
+    }
+    result.ISTIRAHAT = breaksArr;
+    result.ISTIRAHAT_MULAI = breaksArr[0] ? breaksArr[0][0] : '';
+    result.ISTIRAHAT_SELESAI = breaksArr[0] ? breaksArr[0][1] : '';
     result.FOTO_KELAS_URL = get('FOTO_KELAS_URL');
     result.FOTO_ABSENSI_URL = get('FOTO_ABSENSI_URL');
-    const bsMinutes = clockMinutes_(get('ISTIRAHAT_MULAI'));
-    const beMinutes = clockMinutes_(get('ISTIRAHAT_SELESAI'));
-    const paid = paidTeachingMinutes_(startMinutes, endMinutes, bsMinutes, beMinutes);
+
+    const paid = paidTeachingMinutes_(startMinutes, endMinutes, breaksArr);
     result.DURASI_MENIT = paid;
     result.JP = paid === null ? null : Math.round((paid / 45) * 100) / 100;
   }
@@ -636,6 +645,14 @@ function saveOwnAttendance_(payload, token) {
   if (!sheet) return { success: false, message: 'Sheet ATTENDANCE tidak ditemukan.' };
   const values = sheet.getDataRange().getValues();
   const headers = values[0].map(String);
+
+  // Auto-create kolom baru jika belum ada
+  if (ensureAttendanceColumns_(sheet, headers).length) {
+    // Refresh values setelah menambah kolom
+    values.length = 0;
+    const newValues = sheet.getDataRange().getValues();
+    values.push.apply(values, newValues);
+  }
   const idIndex = findColumnIndex_(headers, ['ACTOR_ID']);
   const typeIndex = findColumnIndex_(headers, ['ACTOR_TYPE']);
   const dateIndex = findColumnIndex_(headers, ['TANGGAL']);
@@ -669,12 +686,31 @@ function saveOwnAttendance_(payload, token) {
     CATATAN: String(record.CATATAN || '')
   };
   if (actorType === 'SENSEI') {
-    attendance.ISTIRAHAT_MULAI = String(record.ISTIRAHAT_MULAI || '');
-    attendance.ISTIRAHAT_SELESAI = String(record.ISTIRAHAT_SELESAI || '');
+    // Simpan istirahat sebagai JSON array
+    let breaksArr = [];
+    if (Array.isArray(record.ISTIRAHAT)) {
+      breaksArr = record.ISTIRAHAT;
+    } else if (record.ISTIRAHAT_JSON) {
+      try { breaksArr = JSON.parse(record.ISTIRAHAT_JSON); } catch (e) { breaksArr = []; }
+    }
+    // Support single break (kompatibilitas lama)
+    if (!breaksArr.length && (record.ISTIRAHAT_MULAI || record.ISTIRAHAT_SELESAI)) {
+      if (record.ISTIRAHAT_MULAI && record.ISTIRAHAT_SELESAI) {
+        breaksArr.push([record.ISTIRAHAT_MULAI, record.ISTIRAHAT_SELESAI]);
+      }
+    }
+    // Validasi & bersihkan
+    breaksArr = breaksArr.filter(function (b) {
+      return Array.isArray(b) && b[0] && b[1] && clockMinutes_(b[0]) !== null && clockMinutes_(b[1]) !== null;
+    });
+
+    attendance.ISTIRAHAT_JSON = JSON.stringify(breaksArr);
+    // Tetap simpan single break untuk backward compat
+    attendance.ISTIRAHAT_MULAI = breaksArr[0] ? breaksArr[0][0] : '';
+    attendance.ISTIRAHAT_SELESAI = breaksArr[0] ? breaksArr[0][1] : '';
     attendance.FOTO_KELAS_URL = String(record.FOTO_KELAS_URL || '');
     attendance.FOTO_ABSENSI_URL = String(record.FOTO_ABSENSI_URL || '');
   }
-
   if (existing) {
     attendance.ATTENDANCE_ID = existing.row[keyIndex];
     attendance.__ROW_NUMBER = existing.rowNumber;
@@ -686,6 +722,20 @@ function saveOwnAttendance_(payload, token) {
   const result = saveSheetRecord_('ATTENDANCE', 'ATTENDANCE_ID', attendance);
   if (!result.success) return result;
   return { success: true, message: existing ? 'Absensi hari ini berhasil diperbarui.' : 'Absensi berhasil tercatat.', data: result.data };
+}
+
+function ensureAttendanceColumns_(sheet, headers) {
+  const needed = ['ISTIRAHAT_JSON', 'FOTO_KELAS_URL', 'FOTO_ABSENSI_URL'];
+  const added = [];
+  needed.forEach(function (col) {
+    if (findColumnIndex_(headers, [col]) < 0) {
+      const newCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, newCol).setValue(col);
+      headers.push(col);
+      added.push(col);
+    }
+  });
+  return added;
 }
 
 function accountRowById_(meta, userId) {
@@ -1400,24 +1450,41 @@ function attendanceActorType_(value) {
   return type;
 }
 
-function paidTeachingMinutes_(start, end, breakStart, breakEnd) {
+function paidTeachingMinutes_(start, end, breaksInput) {
   if (start === null || end === null || start === end) return null;
 
   const startAt = start;
   const endAt = end > start ? end : end + 1440;
   let paidMinutes = endAt - startAt;
 
-  // Istirahat dari record (jika ada)
-  if (breakStart !== null && breakStart !== undefined &&
-      breakEnd !== null && breakEnd !== undefined &&
-      breakStart !== breakEnd) {
-    const bs = breakStart;
-    const be = breakEnd > breakStart ? breakEnd : breakEnd + 1440;
-    for (let dayStart = Math.floor(startAt / 1440) * 1440; dayStart < endAt; dayStart += 1440) {
-      const overlapStart = Math.max(startAt, dayStart + bs);
+  // Normalisasi breaks: bisa array of array, atau single array, atau kosong
+  let breaks = [];
+  if (Array.isArray(breaksInput)) {
+    if (breaksInput.length && Array.isArray(breaksInput[0])) {
+      breaks = breaksInput;  // [[mulai, selesai], ...]
+    } else if (breaksInput.length === 2) {
+      breaks = [breaksInput];  // [mulai, selesai]
+    }
+  }
+
+  // Konversi tiap break jadi menit
+  const breakRanges = [];
+  breaks.forEach(function (b) {
+    if (!Array.isArray(b) || b.length < 2) return;
+    const bs = clockMinutes_(b[0]);
+    const be = clockMinutes_(b[1]);
+    if (bs === null || be === null || bs === be) return;
+    breakRanges.push([bs, be]);
+  });
+
+  // Kurangi overlap istirahat dari durasi
+  for (let dayStart = Math.floor(startAt / 1440) * 1440; dayStart < endAt; dayStart += 1440) {
+    breakRanges.forEach(function (pause) {
+      const be = pause[1] > pause[0] ? pause[1] : pause[1] + 1440;
+      const overlapStart = Math.max(startAt, dayStart + pause[0]);
       const overlapEnd = Math.min(endAt, dayStart + be);
       paidMinutes -= Math.max(0, overlapEnd - overlapStart);
-    }
+    });
   }
 
   return Math.max(0, paidMinutes);
@@ -1480,9 +1547,15 @@ function calculateSalaryRecord_(record) {
     if (status !== 'HADIR' && status !== 'TERLAMBAT') return;
 
     meetingCount += 1;
-    const bs = bsIdx >= 0 ? clockMinutes_(row[bsIdx]) : null;
-    const be = beIdx >= 0 ? clockMinutes_(row[beIdx]) : null;
-    const paidMinutes = paidTeachingMinutes_(clockMinutes_(row[startIndex]), clockMinutes_(row[endIndex]), bs, be);
+    let breaksArr = [];
+    const jsonIdx = findColumnIndex_(headers, ['ISTIRAHAT_JSON']);
+    if (jsonIdx >= 0 && row[jsonIdx]) {
+      try { breaksArr = JSON.parse(row[jsonIdx]); } catch (e) { breaksArr = []; }
+    }
+    if (!breaksArr.length && bsIdx >= 0 && beIdx >= 0 && row[bsIdx] && row[beIdx]) {
+      breaksArr.push([clockLabel_(clockMinutes_(row[bsIdx])), clockLabel_(clockMinutes_(row[beIdx]))]);
+    }
+    const paidMinutes = paidTeachingMinutes_(clockMinutes_(row[startIndex]), clockMinutes_(row[endIndex]), breaksArr);
     if (paidMinutes === null) {
       incompleteTimes += 1;
       return;
@@ -1558,15 +1631,29 @@ function saveSheetRecord_(sheetName, keyField, payload) {
       if (start === end) {
         return { success: false, message: 'Jam mulai dan selesai tidak boleh sama.' };
       }
-      const bs = clockMinutes_(record.ISTIRAHAT_MULAI);
-      const be = clockMinutes_(record.ISTIRAHAT_SELESAI);
-      if ((bs === null) !== (be === null)) {
-        return { success: false, message: 'Istirahat harus diisi lengkap (mulai dan selesai), atau dikosongkan keduanya.' };
+      // Validasi istirahat (dari ISTIRAHAT_JSON atau fallback single)
+      let breaksToValidate = [];
+      if (record.ISTIRAHAT_JSON) {
+        try { breaksToValidate = JSON.parse(record.ISTIRAHAT_JSON); } catch (e) { breaksToValidate = []; }
+      } else if (record.ISTIRAHAT_MULAI || record.ISTIRAHAT_SELESAI) {
+        if (record.ISTIRAHAT_MULAI && record.ISTIRAHAT_SELESAI) {
+          breaksToValidate.push([record.ISTIRAHAT_MULAI, record.ISTIRAHAT_SELESAI]);
+        } else {
+          return { success: false, message: 'Istirahat harus diisi lengkap (mulai dan selesai).' };
+        }
       }
-      if (bs !== null && be !== null && bs === be) {
-        return { success: false, message: 'Jam istirahat mulai dan selesai tidak boleh sama.' };
+      for (let bi = 0; bi < breaksToValidate.length; bi += 1) {
+        const b = breaksToValidate[bi];
+        if (!Array.isArray(b) || b.length < 2) continue;
+        const bs = clockMinutes_(b[0]);
+        const be = clockMinutes_(b[1]);
+        if (bs === null || be === null) {
+          return { success: false, message: 'Format jam istirahat tidak valid.' };
+        }
+        if (bs === be) {
+          return { success: false, message: 'Jam istirahat mulai dan selesai tidak boleh sama.' };
+        }
       }
-    }
   }
 
   if (sheetName === 'SALARY') {
