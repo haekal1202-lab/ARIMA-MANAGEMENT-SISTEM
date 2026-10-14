@@ -343,7 +343,7 @@ function generatedAccountId_(name, phone) {
   const namePart = String(name || '').trim().match(/[A-Za-z]+/);
   const phoneDigits = String(phone || '').replace(/\D/g, '');
   if (!namePart || namePart[0].length < 2) {
-    return { success: false, message: 'Nama harus memiliki minimal 3 huruf untuk membuat ID akun.' };
+    return { success: false, message: 'Nama harus memiliki minimal 2 huruf untuk membuat ID akun.' };
   }
   if (phoneDigits.length < 4) {
     return { success: false, message: 'Nomor WhatsApp harus memiliki minimal 4 angka untuk membuat ID akun.' };
@@ -1637,7 +1637,7 @@ function saveSheetRecord_(sheetName, keyField, payload) {
     : new Array(headers.length).fill('');
     let finalKey = requestedKey || String(row[keyIndex] || '').trim();
   if (!finalKey) {
-    // Untuk master siswa/sensei, buat ID format baru: 3 huruf nama + 4 angka WA
+    // Untuk master siswa/sensei, buat ID format baru: 2 huruf nama + 4 angka WA
     if (sheetName === 'STUDENTS' || sheetName === 'SENSEI') {
       const nameIdx = findColumnIndex_(headers, ['NAMA', 'NAME']);
       const phoneIdx = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE']);
