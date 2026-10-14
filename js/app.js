@@ -1006,7 +1006,7 @@ window.App = (() => {
       return;
     }
 
-    const adminMenus = ["attendance", "billing", "finance", "salary", "reports", "settings"];
+    const adminMenus = ["students", "sensei", "attendance", "billing", "receipts", "finance", "salary", "reports", "settings"];
     const visibleMenus = menus.filter(
       menu => !adminMenus.includes(menu[0]) || isAdminUser()
     );
@@ -1345,6 +1345,15 @@ window.App = (() => {
           break;
 
 
+        case "receipts":
+
+          await renderReceipts(
+            el
+          );
+
+          break;
+
+
         case "finance":
 
           await renderFinance(
@@ -1400,6 +1409,251 @@ window.App = (() => {
 
     }
 
+  }
+
+
+  /*
+   * =========================================================
+   * KWITANSI
+   * =========================================================
+   */
+
+  function terbilang(value) {
+    const units = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"];
+    const say = n => {
+      n = Math.floor(n);
+      if (n < 12) return units[n];
+      if (n < 20) return `${say(n - 10)} belas`;
+      if (n < 100) return `${say(n / 10)} puluh${n % 10 ? ` ${say(n % 10)}` : ""}`;
+      if (n < 200) return `seratus${n - 100 ? ` ${say(n - 100)}` : ""}`;
+      if (n < 1000) return `${say(n / 100)} ratus${n % 100 ? ` ${say(n % 100)}` : ""}`;
+      if (n < 2000) return `seribu${n - 1000 ? ` ${say(n - 1000)}` : ""}`;
+      if (n < 1e6) return `${say(n / 1000)} ribu${n % 1000 ? ` ${say(n % 1000)}` : ""}`;
+      if (n < 1e9) return `${say(n / 1e6)} juta${n % 1e6 ? ` ${say(n % 1e6)}` : ""}`;
+      if (n < 1e12) return `${say(n / 1e9)} miliar${n % 1e9 ? ` ${say(n % 1e9)}` : ""}`;
+      return String(n);
+    };
+    const number = Math.round(Number(value) || 0);
+    if (number <= 0) return "nol rupiah";
+    return `${say(number)} rupiah`;
+  }
+
+  async function renderReceipts(el) {
+
+    if (!isAdminUser()) {
+      el.innerHTML = `<div class="card"><h2>Akses Ditolak</h2><p class="muted">Kwitansi hanya dapat dibuka oleh admin.</p></div>`;
+      return;
+    }
+
+    const [paymentResponse, studentsResponse] = await Promise.all([API.payments(), API.students()]);
+    if (paymentResponse?.success === false) throw new Error(paymentResponse.message || "Data pembayaran gagal dimuat.");
+    if (studentsResponse?.success === false) throw new Error(studentsResponse.message || "Data siswa gagal dimuat.");
+
+    const students = new Map(
+      (Array.isArray(studentsResponse?.data) ? studentsResponse.data : [])
+        .map(row => [String(row.ID_SISWA || "").trim(), row])
+    );
+    const payments = (Array.isArray(paymentResponse?.data) ? paymentResponse.data : [])
+      .slice()
+      .sort((a, b) => String(b.PAYMENT_DATE || "").localeCompare(String(a.PAYMENT_DATE || "")));
+
+    const dateText = value => {
+      const text = String(value || "");
+      return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : text;
+    };
+    const nameOf = row => students.get(String(row.ID_SISWA || "").trim())?.NAMA || "-";
+
+    el.innerHTML = `
+      ${pageHeader("Kwitansi", "Cetak bukti pembayaran siswa dari data pembayaran yang sudah tercatat.")}
+      <div class="report-toolbar">
+        <div>
+          <label for="receipt-search">Cari pembayaran</label>
+          <input id="receipt-search" type="search" placeholder="ID siswa, nama, atau no. pembayaran" autocomplete="off">
+        </div>
+      </div>
+      <div id="receipt-list"></div>
+    `;
+
+    const listRoot = qs("#receipt-list", el);
+
+    function draw(filter = "") {
+      const keyword = filter.trim().toLowerCase();
+      const rows = payments.filter(row => !keyword || [row.PAYMENT_ID, row.ID_SISWA, nameOf(row), row.BILLING_ID]
+        .some(value => String(value || "").toLowerCase().includes(keyword)));
+      if (!rows.length) {
+        listRoot.innerHTML = `<div class="card"><div class="muted">${payments.length ? "Tidak ada pembayaran yang cocok." : "Belum ada data pembayaran."}</div></div>`;
+        return;
+      }
+      listRoot.innerHTML = `
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Tanggal</th><th>No. Pembayaran</th><th>ID Siswa</th><th>Nama</th><th>Jumlah</th><th>Metode</th><th></th></tr></thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  <td>${esc(dateText(row.PAYMENT_DATE))}</td>
+                  <td>${esc(row.PAYMENT_ID)}</td>
+                  <td>${esc(row.ID_SISWA)}</td>
+                  <td>${esc(nameOf(row))}</td>
+                  <td class="receipt-amount">${esc(formatRupiah(row.AMOUNT))}</td>
+                  <td>${esc(row.PAYMENT_METHOD || "-")}</td>
+                  <td><div class="receipt-actions">
+                    <button type="button" class="btn btn-primary" data-receipt-pdf="${esc(row.PAYMENT_ID)}">Cetak PDF</button>
+                    <button type="button" class="btn btn-light" data-receipt-wa="${esc(row.PAYMENT_ID)}">WhatsApp</button>
+                  </div></td>
+                </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    draw();
+    qs("#receipt-search", el).addEventListener("input", event => draw(event.target.value));
+
+    async function ensurePdfLibrary() {
+      if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+      await new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js";
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Library PDF tidak dapat dimuat. Periksa koneksi internet."));
+        document.head.appendChild(script);
+      });
+      if (!window.jspdf?.jsPDF) throw new Error("Library PDF tidak tersedia.");
+      return window.jspdf.jsPDF;
+    }
+
+    function logoData() {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          canvas.getContext("2d").drawImage(image, 0, 0);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        image.onerror = () => reject(new Error("Logo tidak dapat dimuat."));
+        image.src = new URL("assets/logo.webp", document.baseURI).href;
+      });
+    }
+
+    async function downloadReceipt(payment) {
+      const JsPDF = await ensurePdfLibrary();
+      const logo = await logoData();
+      const student = students.get(String(payment.ID_SISWA || "").trim()) || {};
+      const pdf = new JsPDF({ unit: "mm", format: "a4" });
+      const width = pdf.internal.pageSize.getWidth();
+      const margin = 18;
+      const inner = width - margin * 2;
+
+      pdf.setFillColor(248, 249, 251);
+      pdf.rect(0, 0, width, 52, "F");
+      pdf.addImage(logo, "PNG", margin, 12, 27, 27);
+      pdf.setTextColor(34, 34, 38);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.text("LPKS ARIMA PERSADA", 51, 19);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(112, 112, 118);
+      pdf.setFontSize(8.5);
+      pdf.text(pdf.splitTextToSize("Jl. Sidoharjo 1, Desa Negara Ratu, Kecamatan Natar, Kabupaten Lampung Selatan", 140), 51, 26);
+      pdf.text("Konfirmasi: 0813-7908-7768 · 0812-8267-4707 · 0823-7512-8230", 51, 36);
+      pdf.text("Email: arimapersada@gmail.com", 51, 42);
+      pdf.setDrawColor(215, 25, 32);
+      pdf.setLineWidth(1);
+      pdf.line(margin, 52, width - margin, 52);
+
+      pdf.setTextColor(180, 20, 27);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.text("KWITANSI", margin, 66);
+      pdf.setTextColor(75, 75, 80);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.text(`No. Pembayaran: ${payment.PAYMENT_ID || "-"}`, margin, 74);
+      pdf.text(`Tanggal bayar: ${dateText(payment.PAYMENT_DATE) || "-"}`, width - margin, 74, { align: "right" });
+
+      const rows = [
+        ["Telah terima dari", `${student.NAMA || "-"} (ID ${payment.ID_SISWA || "-"})`],
+        ["Uang sejumlah", terbilang(payment.AMOUNT).replace(/^./, c => c.toUpperCase())],
+        ["Untuk pembayaran", `Tagihan ${payment.BILLING_ID || "-"}${payment.NOTES ? ` - ${payment.NOTES}` : ""}`],
+        ["Metode", `${payment.PAYMENT_METHOD || "-"}${payment.REFERENCE_NO ? ` (Ref. ${payment.REFERENCE_NO})` : ""}`]
+      ];
+      let y = 88;
+      rows.forEach(([label, value]) => {
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(112, 112, 118);
+        pdf.text(label, margin, y);
+        pdf.setTextColor(34, 34, 38);
+        pdf.setFont("helvetica", "bold");
+        const lines = pdf.splitTextToSize(String(value), inner - 45);
+        pdf.text(lines, margin + 45, y);
+        y += Math.max(1, lines.length) * 5 + 5;
+      });
+
+      y += 4;
+      pdf.setFillColor(248, 248, 249);
+      pdf.roundedRect(margin, y, inner, 24, 2, 2, "F");
+      pdf.setTextColor(34, 34, 38);
+      pdf.setFontSize(10);
+      pdf.text("JUMLAH DITERIMA", margin + 7, y + 15);
+      pdf.setTextColor(180, 20, 27);
+      pdf.setFontSize(15);
+      pdf.text(formatRupiah(payment.AMOUNT), width - margin - 7, y + 15, { align: "right" });
+
+      y += 44;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(75, 75, 80);
+      pdf.text(`Lampung Selatan, ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`, width - margin, y, { align: "right" });
+      pdf.text("Admin LPKS Arima Persada", width - margin, y + 32, { align: "right" });
+      pdf.setFontSize(8);
+      pdf.setTextColor(112, 112, 118);
+      pdf.text("Kwitansi ini sah sebagai bukti pembayaran yang tercatat di sistem LPKS Arima Persada.", margin, 280);
+
+      pdf.save(`kwitansi-${String(payment.PAYMENT_ID || "pembayaran").replace(/[^A-Za-z0-9_-]/g, "-")}.pdf`);
+    }
+
+    function sendWhatsApp(payment) {
+      const student = students.get(String(payment.ID_SISWA || "").trim()) || {};
+      let phone = String(student.NO_WA || "").replace(/\D/g, "");
+      if (!phone) throw new Error("Nomor WhatsApp siswa belum tersedia.");
+      if (phone.startsWith("0")) phone = `62${phone.slice(1)}`;
+      else if (!phone.startsWith("62")) phone = `62${phone}`;
+      const message = [
+        "LPKS Arima Persada - Bukti Pembayaran",
+        `No. Pembayaran: ${payment.PAYMENT_ID || "-"}`,
+        `Nama: ${student.NAMA || "-"}`,
+        `Tanggal: ${dateText(payment.PAYMENT_DATE) || "-"}`,
+        `Jumlah: ${formatRupiah(payment.AMOUNT)}`,
+        `Metode: ${payment.PAYMENT_METHOD || "-"}`,
+        "Terima kasih. Pembayaran Anda telah kami terima."
+      ].join("\n");
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+    }
+
+    listRoot.addEventListener("click", async event => {
+      const pdfButton = event.target.closest("[data-receipt-pdf]");
+      const waButton = event.target.closest("[data-receipt-wa]");
+      const button = pdfButton || waButton;
+      if (!button) return;
+      const id = button.dataset.receiptPdf || button.dataset.receiptWa;
+      const payment = payments.find(row => String(row.PAYMENT_ID) === id);
+      if (!payment) return;
+      try {
+        if (pdfButton) {
+          button.disabled = true;
+          await downloadReceipt(payment);
+        } else {
+          sendWhatsApp(payment);
+        }
+      } catch (error) {
+        showToast(error.message || "Kwitansi gagal dibuat.", "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
   }
 
 

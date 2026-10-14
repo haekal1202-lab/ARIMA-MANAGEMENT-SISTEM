@@ -12,21 +12,39 @@
 const ARIMA = Object.freeze({
   SPREADSHEET_ID: '1hsfZFAS24iI6w2dQRONgOhg2j7WCa-_OcJRFG9zDKOw',
   TIMEZONE: 'Asia/Jakarta',
-  DEFAULT_SECRET: 'ARIMA_SECRET_2026'
+  TOKEN_TTL_MS: 60 * 60 * 1000,
+  LOGIN_MAX_FAILS: 5,
+  LOGIN_LOCK_SECONDS: 15 * 60
 });
 
 function doGet() {
   return json_(health_());
 }
 
+const WRITE_ACTIONS_ = Object.freeze([
+  'assignStudentIds', 'assignSenseiIds', 'selfAttendance', 'generateUserIds',
+  'userCreate', 'userReset', 'userDelete',
+  'studentSave', 'studentDelete', 'senseiSave', 'senseiDelete',
+  'attendanceSave', 'billingSave', 'paymentSave', 'financeSave', 'salarySave'
+]);
+
 function doPost(e) {
+  let lock = null;
   try {
     const body = JSON.parse(String(e && e.postData && e.postData.contents ? e.postData.contents : '{}'));
     const action = body && body.action ? body.action : 'health';
     const payload = body && body.payload ? body.payload : {};
+    if (WRITE_ACTIONS_.indexOf(String(action)) >= 0) {
+      lock = LockService.getScriptLock();
+      lock.waitLock(20000);
+    }
     return json_(route_(action, payload, body && body.token));
   } catch (err) {
     return json_({ success: false, message: String(err && err.message ? err.message : err) });
+  } finally {
+    if (lock) {
+      try { lock.releaseLock(); } catch (ignore) { /* lock already released */ }
+    }
   }
 }
 
@@ -39,8 +57,12 @@ function route_(action, p, token) {
     case 'logout':
       return logout_();
     case 'dashboard':
+      const dashboardAccessError = roleAccessError_(token, ['ADMIN', 'SENSEI', 'SISWA']);
+      if (dashboardAccessError) return dashboardAccessError;
       return dashboard_();
     case 'students':
+      const studentsAccessError = roleAccessError_(token, ['ADMIN']);
+      if (studentsAccessError) return studentsAccessError;
       return listSheet_('STUDENTS');
     case 'assignStudentIds':
       const assignStudentIdsAccessError = accountAccessError_(token);
@@ -51,6 +73,8 @@ function route_(action, p, token) {
       if (assignSenseiIdsAccessError) return assignSenseiIdsAccessError;
       return assignMissingSenseiIds_();
     case 'sensei':
+      const senseiAccessError = roleAccessError_(token, ['ADMIN']);
+      if (senseiAccessError) return senseiAccessError;
       return senseiList_(token);
     case 'attendance':
       const attendanceAccessError = accountAccessError_(token);
@@ -105,12 +129,20 @@ function route_(action, p, token) {
       if (userDeleteAccessError) return userDeleteAccessError;
       return deleteAccount_(p, token);
     case 'studentSave':
+      const studentSaveAccessError = roleAccessError_(token, ['ADMIN']);
+      if (studentSaveAccessError) return studentSaveAccessError;
       return saveSheetRecord_('STUDENTS', 'ID_SISWA', p);
     case 'studentDelete':
+      const studentDeleteAccessError = roleAccessError_(token, ['ADMIN']);
+      if (studentDeleteAccessError) return studentDeleteAccessError;
       return deleteSheetRecord_('STUDENTS', 'ID_SISWA', p);
     case 'senseiSave':
+      const senseiSaveAccessError = roleAccessError_(token, ['ADMIN']);
+      if (senseiSaveAccessError) return senseiSaveAccessError;
       return saveSenseiRecord_(p, token);
     case 'senseiDelete':
+      const senseiDeleteAccessError = roleAccessError_(token, ['ADMIN']);
+      if (senseiDeleteAccessError) return senseiDeleteAccessError;
       return deleteSheetRecord_('SENSEI', 'ID_SENSEI', p);
     case 'attendanceSave':
       const attendanceSaveAccessError = accountAccessError_(token);
@@ -166,8 +198,8 @@ function tokenUser_(token) {
 
   try {
     const payloadText = Utilities.newBlob(Utilities.base64Decode(parts[0])).getDataAsString('UTF-8');
-    const expectedSignature = toBase64Url_(Utilities.computeHmacSha256Signature(payloadText, buildAuthSecret_()));
-    if (parts[1] !== expectedSignature) return null;
+    const expectedSignature = toBase64Url_(Utilities.computeHmacSha256Signature(payloadText, buildTokenSecret_()));
+    if (!safeEqual_(parts[1], expectedSignature)) return null;
     const payload = JSON.parse(payloadText);
     if (!payload.id || Number(payload.exp) <= Date.now()) return null;
     return payload;
@@ -183,6 +215,18 @@ function isAdminToken_(token) {
 
 function adminOnlyResponse_() {
   return { success: false, code: 'FORBIDDEN', message: 'Data payroll hanya dapat diakses oleh admin.' };
+}
+
+function roleAccessError_(token, allowedRoles) {
+  const user = tokenUser_(token);
+  if (!user) {
+    return { success: false, code: 'AUTH_REQUIRED', message: 'Sesi login perlu diperbarui. Silakan login kembali.' };
+  }
+  const role = String(user.role || '').trim().toUpperCase();
+  if (allowedRoles.indexOf(role) < 0) {
+    return { success: false, code: 'FORBIDDEN', message: 'Anda tidak memiliki akses untuk tindakan ini.' };
+  }
+  return null;
 }
 
 function accountAccessError_(token) {
@@ -484,13 +528,27 @@ function attendanceForToday_(actorId, actorType) {
     const index = findColumnIndex_(headers, [field]);
     return index < 0 ? '' : row[index];
   };
-  return {
+  const startMinutes = clockMinutes_(get('JAM_MASUK'));
+  const endMinutes = clockMinutes_(get('JAM_KELUAR'));
+  const result = {
     ATTENDANCE_ID: get('ATTENDANCE_ID'),
-    JAM_MASUK: get('JAM_MASUK'),
-    JAM_KELUAR: get('JAM_KELUAR'),
+    TANGGAL: today,
+    JAM_MASUK: clockLabel_(startMinutes),
+    JAM_KELUAR: clockLabel_(endMinutes),
     STATUS: get('STATUS'),
     CATATAN: get('CATATAN')
   };
+  if (actorType === 'SENSEI') {
+    const paid = paidTeachingMinutes_(startMinutes, endMinutes);
+    result.DURASI_MENIT = paid;
+    result.JP = paid === null ? null : Math.round((paid / 45) * 100) / 100;
+  }
+  return result;
+}
+
+function clockLabel_(minutes) {
+  if (minutes === null || minutes === undefined) return '';
+  return ('0' + Math.floor(minutes / 60)).slice(-2) + ':' + ('0' + (minutes % 60)).slice(-2);
 }
 
 function attendanceDateKey_(value) {
@@ -710,14 +768,48 @@ function saveSenseiRecord_(payload, token) {
   return saveSheetRecord_('SENSEI', 'ID_SENSEI', record);
 }
 
+function randomSecret_() {
+  return Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid();
+}
+
+/**
+ * Secret untuk menandatangani token sesi. Dibuat acak sekali saja dan disimpan
+ * di Script Properties; tidak pernah ada di kode sumber.
+ */
+function buildTokenSecret_() {
+  const props = PropertiesService.getScriptProperties();
+  let secret = props.getProperty('ARIMA_TOKEN_SECRET');
+  if (!secret) {
+    secret = randomSecret_();
+    props.setProperty('ARIMA_TOKEN_SECRET', secret);
+  }
+  return secret;
+}
+
+/**
+ * Secret untuk hash password. Deployment lama sudah menyimpan nilainya di
+ * ARIMA_AUTH_SECRET sehingga password lama tetap valid. Deployment baru
+ * mendapat nilai acak, bukan konstanta dari kode.
+ */
 function buildAuthSecret_() {
   const props = PropertiesService.getScriptProperties();
   let secret = props.getProperty('ARIMA_AUTH_SECRET');
   if (!secret) {
-    secret = ARIMA.DEFAULT_SECRET;
+    secret = randomSecret_();
     props.setProperty('ARIMA_AUTH_SECRET', secret);
   }
   return secret;
+}
+
+function safeEqual_(a, b) {
+  const x = String(a || '');
+  const y = String(b || '');
+  let diff = x.length ^ y.length;
+  const length = Math.max(x.length, y.length);
+  for (let index = 0; index < length; index += 1) {
+    diff |= (x.charCodeAt(index) || 0) ^ (y.charCodeAt(index) || 0);
+  }
+  return diff === 0;
 }
 
 function toHex_(bytes) {
@@ -786,19 +878,25 @@ function verifyPassword_(password, user, secret) {
   const candidates = passwordHashCandidates_(password, salt, secret);
   const normalizedStored = storedHash.replace(/\s+/g, '').trim();
 
-  return candidates.some(function (candidate) {
-    return String(candidate).replace(/\s+/g, '').toLowerCase() === normalizedStored.replace(/\s+/g, '').toLowerCase();
+  const target = normalizedStored.toLowerCase();
+  let matched = false;
+  candidates.forEach(function (candidate) {
+    if (safeEqual_(String(candidate).replace(/\s+/g, '').toLowerCase(), target)) matched = true;
   });
+  return matched;
 }
 
 function initialAdminUser_() {
   const secret = buildAuthSecret_();
+  const password = Utilities.getUuid().replace(/-/g, '').slice(0, 12);
+  const salt = Utilities.getUuid();
   return {
     id: 'ADMIN001',
     name: 'Administrator',
     role: 'ADMIN',
-    salt: 'admin001',
-    passwordHash: hashPassword_('admin123', 'admin001', secret)
+    salt: salt,
+    password: password,
+    passwordHash: hashPassword_(password, salt, secret)
   };
 }
 
@@ -809,7 +907,7 @@ function createInitialAdmin_() {
   if (existing.length) return { success: true, created: false, message: 'USERS sudah memiliki data.' };
   const user = initialAdminUser_();
   sheet.appendRow([user.id, user.name, user.role, user.salt, user.passwordHash]);
-  return { success: true, created: true, userId: user.id, message: 'Admin awal berhasil dibuat.' };
+  return { success: true, created: true, userId: user.id, password: user.password, message: 'Admin awal berhasil dibuat. Catat password ini lalu segera ganti.' };
 }
 
 function ensureUsersSheet_() {
@@ -901,22 +999,40 @@ function findUserById_(userId) {
   }) || null;
 }
 
+function loginThrottleKey_(id) {
+  return 'login_fail_' + String(id || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 40);
+}
+
+function loginFailCount_(id) {
+  return Number(CacheService.getScriptCache().get(loginThrottleKey_(id)) || 0);
+}
+
+function recordLoginFailure_(id) {
+  const cache = CacheService.getScriptCache();
+  const key = loginThrottleKey_(id);
+  cache.put(key, String(Number(cache.get(key) || 0) + 1), ARIMA.LOGIN_LOCK_SECONDS);
+}
+
 function login_(p) {
   const id = String(p && p.userId ? p.userId : '').trim();
   const password = String(p && p.password ? p.password : '');
+  const invalid = { success: false, message: 'ID atau password salah.' };
 
   if (!id) return { success: false, message: 'ID wajib diisi.' };
   if (!password) return { success: false, message: 'Password wajib diisi.' };
 
-  const user = findUserById_(id);
-  if (!user) {
-    return { success: false, message: 'User tidak ditemukan.' };
+  if (loginFailCount_(id) >= ARIMA.LOGIN_MAX_FAILS) {
+    return { success: false, code: 'TOO_MANY_ATTEMPTS', message: 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.' };
   }
 
+  const user = findUserById_(id);
   const secret = buildAuthSecret_();
-  if (!verifyPassword_(password, user, secret)) {
-    return { success: false, message: 'Password salah.' };
+  if (!user || !verifyPassword_(password, user, secret)) {
+    recordLoginFailure_(id);
+    return invalid;
   }
+
+  CacheService.getScriptCache().remove(loginThrottleKey_(id));
 
   const safeUser = {
     id: String(user.id || id),
@@ -928,11 +1044,11 @@ function login_(p) {
     id: safeUser.id,
     name: safeUser.name,
     role: safeUser.role,
-    exp: Date.now() + (60 * 60 * 1000)
+    exp: Date.now() + ARIMA.TOKEN_TTL_MS
   });
 
   const token = Utilities.base64Encode(tokenPayload) + '.' + toBase64Url_(
-    Utilities.computeHmacSha256Signature(tokenPayload, buildAuthSecret_())
+    Utilities.computeHmacSha256Signature(tokenPayload, buildTokenSecret_())
   );
 
   return {
@@ -1553,14 +1669,9 @@ function countActive_(sheetName, statusCol, statusValue) {
 
 function setupInitialAdmin() {
   const result = createInitialAdmin_();
+  // Password acak hanya ditampilkan di log eksekusi ini, tidak disimpan di mana pun.
   Logger.log(JSON.stringify(result));
-  return result;
-}
-
-function testLogin() {
-  const result = login_({ userId: 'ADMIN001', password: 'admin123' });
-  Logger.log(JSON.stringify(result));
-  return result;
+  return result.created ? { success: true, created: true, message: 'Lihat View > Logs untuk password awal.' } : result;
 }
 
 function testSpreadsheetConnection() {

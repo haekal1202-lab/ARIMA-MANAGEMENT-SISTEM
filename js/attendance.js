@@ -91,6 +91,42 @@
     }
   }
 
+  let justSaved = false;
+
+  function formatDuration(minutes) {
+    const total = Number(minutes);
+    if (!Number.isFinite(total) || total <= 0) return "-";
+    const hours = Math.floor(total / 60);
+    const rest = total % 60;
+    return hours ? `${hours} jam${rest ? ` ${rest} menit` : ""}` : `${rest} menit`;
+  }
+
+  function renderSummary(log, isSensei, today, fresh) {
+    const rows = [
+      ["Tanggal", today],
+      ["Status", log.STATUS || "-"],
+      [isSensei ? "Mulai mengajar" : "Jam masuk", log.JAM_MASUK || "-"],
+      [isSensei ? "Selesai mengajar" : "Jam keluar", log.JAM_KELUAR || "-"]
+    ];
+    if (isSensei) {
+      rows.push(["Durasi dibayar", formatDuration(log.DURASI_MENIT)]);
+      rows.push(["Jumlah JP (45 menit)", log.JP === null || log.JP === undefined || log.JP === "" ? "-" : String(log.JP)]);
+    }
+    rows.push(["Catatan", log.CATATAN || "-"]);
+    const incomplete = isSensei && (log.DURASI_MENIT === null || log.DURASI_MENIT === undefined || log.DURASI_MENIT === "");
+    return `
+      <section class="attendance-panel attendance-summary" id="attendance-summary">
+        ${fresh ? `<div class="attendance-success" role="status">Absensi berhasil disimpan.</div>` : ""}
+        <span class="attendance-kicker">RINCIAN ABSENSI</span>
+        <h2>Absensi Hari Ini</h2>
+        <dl class="attendance-summary-list">
+          ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}
+        </dl>
+        ${incomplete ? `<p class="attendance-note">Durasi belum dapat dihitung karena jam mulai atau selesai belum lengkap.</p>` : ""}
+      </section>
+    `;
+  }
+
   function renderAttendance(profile) {
     const isSensei = profile.role === "SENSEI";
     const todayLog = profile.todayAttendance || {};
@@ -114,6 +150,8 @@
             ${profile.phone ? `<span>WhatsApp <strong>${escapeHtml(profile.phone)}</strong></span>` : ""}
           </div>
         </section>
+
+        ${saved ? renderSummary(todayLog, isSensei, today, justSaved) : ""}
 
         <section class="attendance-panel">
           <div class="attendance-section-heading">
@@ -171,7 +209,10 @@
           CATATAN: formData.get("CATATAN")
         });
         if (!result?.success) throw new Error(result?.message || "Absensi gagal disimpan.");
+        justSaved = true;
         await loadProfile();
+        document.getElementById("attendance-summary")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        justSaved = false;
       } catch (error) {
         errorBox.textContent = error.message || "Absensi gagal disimpan.";
         errorBox.classList.remove("hidden");

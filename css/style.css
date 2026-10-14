@@ -141,3 +141,15 @@
 .finance-income,.report-positive{color:#18794e}
 .finance-expense,.report-negative{color:#a71920}
 .finance-summary .metric{font-size:24px}
+.attendance-summary h2{margin:4px 0 14px;font-size:19px}
+.attendance-success{margin-bottom:14px;padding:10px 12px;border-radius:7px;background:#eaf5ef;color:#19724d;font-size:13px;font-weight:700}
+.attendance-summary-list{display:grid;gap:0;margin:0}
+.attendance-summary-list div{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #eee}
+.attendance-summary-list div:last-child{border-bottom:0}
+.attendance-summary-list dt{color:#717179;font-size:13px}
+.attendance-summary-list dd{margin:0;font-weight:700;font-size:14px;text-align:right;overflow-wrap:anywhere}
+.receipt-toolbar{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px}
+.receipt-toolbar .field{flex:1;min-width:220px}
+.receipt-actions{display:flex;gap:8px;flex-wrap:wrap}
+.receipt-amount{font-weight:700;white-space:nowrap}
+
