@@ -38,11 +38,14 @@
       <div class="attendance-shell attendance-login-shell">
         <header class="attendance-brand">
           <img src="assets/logo.webp" alt="Logo LPKS Arima Persada">
-          <div><strong>ARIMA</strong><span>ABSENSI LPKS</span></div>
+          <div>
+            <strong>LPKS Arima Persada</strong>
+            <span>Sistem Absensi</span>
+          </div>
         </header>
         <section class="attendance-panel attendance-login-panel">
           <span class="attendance-kicker">SISWA &amp; SENSEI</span>
-          <h1>Masuk Absensi</h1>
+          <h1>Login Absensi</h1>
           <p class="attendance-muted">Gunakan ID dan password akun Anda.</p>
           <form id="attendance-login-form" class="attendance-form">
             <label for="attendance-login-id">ID Pengguna</label>
@@ -105,15 +108,24 @@
     const rows = [
       ["Tanggal", today],
       ["Status", log.STATUS || "-"],
-      [isSensei ? "Mulai mengajar" : "Jam masuk", log.JAM_MASUK || "-"],
-      [isSensei ? "Selesai mengajar" : "Jam keluar", log.JAM_KELUAR || "-"]
+      [isSensei ? "Mulai" : "Jam masuk", log.JAM_MASUK || "-"]
     ];
+    if (isSensei) {
+      rows.push(["Istirahat", (log.ISTIRAHAT_MULAI || log.ISTIRAHAT_SELESAI)
+        ? `${log.ISTIRAHAT_MULAI || "-"} – ${log.ISTIRAHAT_SELESAI || "-"}`
+        : "-"]);
+    }
+    rows.push([isSensei ? "Selesai" : "Jam keluar", log.JAM_KELUAR || "-"]);
     if (isSensei) {
       rows.push(["Durasi dibayar", formatDuration(log.DURASI_MENIT)]);
       rows.push(["Jumlah JP (45 menit)", log.JP === null || log.JP === undefined || log.JP === "" ? "-" : String(log.JP)]);
     }
     rows.push(["Catatan", log.CATATAN || "-"]);
+
     const incomplete = isSensei && (log.DURASI_MENIT === null || log.DURASI_MENIT === undefined || log.DURASI_MENIT === "");
+    const fotoKelas = log.FOTO_KELAS_URL ? `<a href="${escapeHtml(log.FOTO_KELAS_URL)}" target="_blank" rel="noopener">Lihat foto</a>` : "Belum ada";
+    const fotoAbsensi = log.FOTO_ABSENSI_URL ? `<a href="${escapeHtml(log.FOTO_ABSENSI_URL)}" target="_blank" rel="noopener">Lihat foto</a>` : "Belum ada";
+
     return `
       <section class="attendance-panel attendance-summary" id="attendance-summary">
         ${fresh ? `<div class="attendance-success" role="status">Absensi berhasil disimpan.</div>` : ""}
@@ -122,6 +134,12 @@
         <dl class="attendance-summary-list">
           ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}
         </dl>
+        ${isSensei ? `
+          <dl class="attendance-summary-list">
+            <div><dt>Foto kelas</dt><dd>${fotoKelas}</dd></div>
+            <div><dt>Foto absensi siswa</dt><dd>${fotoAbsensi}</dd></div>
+          </dl>
+        ` : ""}
         ${incomplete ? `<p class="attendance-note">Durasi belum dapat dihitung karena jam mulai atau selesai belum lengkap.</p>` : ""}
       </section>
     `;
@@ -138,7 +156,10 @@
       <div class="attendance-shell">
         <header class="attendance-brand">
           <img src="assets/logo.webp" alt="Logo LPKS Arima Persada">
-          <div><strong>ARIMA</strong><span>ABSENSI LPKS</span></div>
+          <div>
+            <strong>LPKS Arima Persada</strong>
+            <span>Sistem Absensi Siswa dan Sensei</span>
+          </div>
           <button type="button" class="btn btn-light attendance-logout" id="attendance-logout">Keluar</button>
         </header>
 
@@ -155,9 +176,13 @@
 
         <section class="attendance-panel">
           <div class="attendance-section-heading">
-            <div><span class="attendance-kicker">${escapeHtml(today)}</span><h2>${saved ? "Perbarui Absensi Hari Ini" : "Catat Kehadiran"}</h2></div>
+            <div>
+              <span class="attendance-kicker">${escapeHtml(today)}</span>
+              <h2>${saved ? "Perbarui Absensi Hari Ini" : "Catat Kehadiran"}</h2>
+            </div>
             ${saved ? `<span class="attendance-saved">Sudah tercatat</span>` : ""}
           </div>
+          ${saved ? `<p class="attendance-note">Anda dapat memperbarui absensi berkali-kali hari ini. Cukup ubah data dan simpan lagi.</p>` : ""}
           <form id="self-attendance-form" class="attendance-form attendance-record-form">
             <div class="attendance-form-row">
               <div>
@@ -167,15 +192,46 @@
                 </select>
               </div>
               <div>
-                <label for="attendance-start">${isSensei ? "Jam mengajar mulai" : "Jam masuk"}</label>
+                <label for="attendance-start">${isSensei ? "Mulai" : "Jam masuk"}</label>
                 <input id="attendance-start" type="time" name="JAM_MASUK" value="${escapeHtml(currentStart)}">
               </div>
+              ${isSensei ? `
+                <div>
+                  <label for="attendance-break-start">Istirahat mulai</label>
+                  <input id="attendance-break-start" type="time" name="ISTIRAHAT_MULAI" value="${escapeHtml(todayLog.ISTIRAHAT_MULAI || "")}">
+                </div>
+                <div>
+                  <label for="attendance-break-end">Istirahat selesai</label>
+                  <input id="attendance-break-end" type="time" name="ISTIRAHAT_SELESAI" value="${escapeHtml(todayLog.ISTIRAHAT_SELESAI || "")}">
+                </div>
+              ` : ""}
               <div>
-                <label for="attendance-end">${isSensei ? "Jam mengajar selesai" : "Jam keluar"}</label>
+                <label for="attendance-end">${isSensei ? "Selesai" : "Jam keluar"}</label>
                 <input id="attendance-end" type="time" name="JAM_KELUAR" value="${escapeHtml(todayLog.JAM_KELUAR || "")}">
               </div>
             </div>
-            ${isSensei ? `<p class="attendance-note">Durasi payroll menghitung 1 JP = 45 menit, di luar istirahat 10.00–10.15 dan 12.00–13.15.</p>` : ""}
+
+            ${isSensei ? `
+              <p class="attendance-note">Durasi payroll menghitung 1 JP = 45 menit, di luar waktu istirahat yang Anda isi. Kosongkan istirahat jika tidak ada.</p>
+            ` : ""}
+
+            ${isSensei ? `
+              <div class="attendance-photo-row">
+                <div>
+                  <label>Foto kelas</label>
+                  <input type="file" id="attendance-photo-class" accept="image/*" capture="environment">
+                  <input type="hidden" name="FOTO_KELAS_URL" id="attendance-photo-class-url" value="${escapeHtml(todayLog.FOTO_KELAS_URL || "")}">
+                  <div class="attendance-photo-preview" id="attendance-photo-class-preview">${todayLog.FOTO_KELAS_URL ? `<a href="${escapeHtml(todayLog.FOTO_KELAS_URL)}" target="_blank" rel="noopener">Lihat foto tersimpan</a>` : ""}</div>
+                </div>
+                <div>
+                  <label>Foto absensi siswa</label>
+                  <input type="file" id="attendance-photo-absensi" accept="image/*" capture="environment">
+                  <input type="hidden" name="FOTO_ABSENSI_URL" id="attendance-photo-absensi-url" value="${escapeHtml(todayLog.FOTO_ABSENSI_URL || "")}">
+                  <div class="attendance-photo-preview" id="attendance-photo-absensi-preview">${todayLog.FOTO_ABSENSI_URL ? `<a href="${escapeHtml(todayLog.FOTO_ABSENSI_URL)}" target="_blank" rel="noopener">Lihat foto tersimpan</a>` : ""}</div>
+                </div>
+              </div>
+            ` : ""}
+
             <label for="attendance-notes">Catatan (opsional)</label>
             <textarea id="attendance-notes" name="CATATAN" rows="3">${escapeHtml(todayLog.CATATAN || "")}</textarea>
             <div class="attendance-error hidden" id="attendance-error" role="alert"></div>
@@ -192,6 +248,61 @@
       renderLogin();
     });
 
+    async function compressImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            const maxDim = 1280;
+            let w = img.width, h = img.height;
+            if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+            else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+            resolve(dataUrl.split(",")[1]);
+          };
+          img.onerror = () => reject(new Error("Gagal membaca file gambar."));
+          img.src = e.target.result;
+        };
+        reader.onerror = () => reject(new Error("Gagal membaca file."));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function uploadPhoto(file, type, urlInputId, previewId) {
+      const preview = document.getElementById(previewId);
+      preview.innerHTML = `Mengunggah...`;
+      try {
+        const base64 = await compressImage(file);
+        const res = await window.API.call("attendancePhotoUpload", {
+          type: type,
+          fileName: file.name || (type + ".jpg"),
+          mimeType: "image/jpeg",
+          base64: base64
+        });
+        if (!res?.success || !res.data?.url) throw new Error(res?.message || "Gagal mengunggah foto.");
+        document.getElementById(urlInputId).value = res.data.url;
+        preview.innerHTML = `<a href="${escapeHtml(res.data.url)}" target="_blank" rel="noopener">Lihat foto terunggah</a>`;
+        return res.data.url;
+      } catch (err) {
+        preview.innerHTML = `<span style="color:#b4232c">${escapeHtml(err.message || "Gagal unggah.")}</span>`;
+        throw err;
+      }
+    }
+
+    document.getElementById("attendance-photo-class")?.addEventListener("change", event => {
+      const file = event.target.files?.[0];
+      if (file) uploadPhoto(file, "KELAS", "attendance-photo-class-url", "attendance-photo-class-preview").catch(() => {});
+    });
+    document.getElementById("attendance-photo-absensi")?.addEventListener("change", event => {
+      const file = event.target.files?.[0];
+      if (file) uploadPhoto(file, "ABSENSI", "attendance-photo-absensi-url", "attendance-photo-absensi-preview").catch(() => {});
+    });
+
     document.getElementById("self-attendance-form").addEventListener("submit", async event => {
       event.preventDefault();
       const form = event.currentTarget;
@@ -202,12 +313,19 @@
       submit.textContent = "Menyimpan...";
       errorBox.classList.add("hidden");
       try {
-        const result = await window.API.selfAttendance({
+        const payload = {
           STATUS: formData.get("STATUS"),
           JAM_MASUK: formData.get("JAM_MASUK"),
           JAM_KELUAR: formData.get("JAM_KELUAR"),
           CATATAN: formData.get("CATATAN")
-        });
+        };
+        if (isSensei) {
+          payload.ISTIRAHAT_MULAI = formData.get("ISTIRAHAT_MULAI") || "";
+          payload.ISTIRAHAT_SELESAI = formData.get("ISTIRAHAT_SELESAI") || "";
+          payload.FOTO_KELAS_URL = formData.get("FOTO_KELAS_URL") || "";
+          payload.FOTO_ABSENSI_URL = formData.get("FOTO_ABSENSI_URL") || "";
+        }
+        const result = await window.API.selfAttendance(payload);
         if (!result?.success) throw new Error(result?.message || "Absensi gagal disimpan.");
         justSaved = true;
         await loadProfile();
