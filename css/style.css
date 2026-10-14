@@ -152,6 +152,7 @@
 .receipt-toolbar .field{flex:1;min-width:220px}
 .receipt-actions{display:flex;gap:8px;flex-wrap:wrap}
 .receipt-amount{font-weight:700;white-space:nowrap}
+
 /* ============ STUDENT DETAIL ============ */
 .student-detail-shell { width: min(920px, 100%); }
 .student-detail-body { padding: 22px 26px 25px; display: grid; gap: 22px; }
@@ -224,6 +225,7 @@
   .student-detail-body { padding: 18px; }
 }
 
+/* ============ ATTENDANCE PHOTO UPLOAD ============ */
 .attendance-photo-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -247,4 +249,90 @@
 .attendance-photo-preview a { color: var(--accent); text-decoration: none; font-weight: 700; }
 @media (max-width: 600px) {
   .attendance-photo-row { grid-template-columns: 1fr; }
+}
+
+/* ============ ISTIRAHAT / BREAK ROWS ============ */
+.attendance-breaks-block {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #ececef;
+  border-radius: 10px;
+  background: #fafafb;
+}
+.attendance-breaks-block > label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #3e3e44;
+}
+.attendance-breaks-block .attendance-note {
+  background: transparent;
+  padding: 0;
+  border-left: 0;
+  margin: 0;
+}
+#attendance-breaks-list {
+  display: grid;
+  gap: 8px;
+}
+
+/* Layout break row — paksa sejajar horizontal */
+.break-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.break-row input[type="time"] {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  width: auto !important;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #d8d8dd;
+  border-radius: 7px;
+  background: #fff;
+  color: #171717;
+  font-size: 14px;
+  font-family: inherit;
+}
+.break-row input[type="time"]:focus {
+  border-color: #c51d25;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(215, 25, 32, .1);
+}
+.break-row .break-sep {
+  flex: 0 0 auto;
+  color: #777;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 0 2px;
+  user-select: none;
+}
+.break-row .remove-break-btn {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 7px;
+  background: #8d1015;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s ease;
+}
+.break-row .remove-break-btn:hover {
+  background: #6d0d10;
+}
+#add-break-btn {
+  align-self: flex-start;
+}
+
+@media (max-width: 520px) {
+  .break-row { gap: 6px; }
+  .break-row .break-sep { display: none; }
+  .break-row .remove-break-btn { padding: 0 10px; font-size: 12px; }
 }
