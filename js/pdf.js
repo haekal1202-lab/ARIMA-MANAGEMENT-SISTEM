@@ -33,7 +33,6 @@ window.ArimaPdf = (() => {
   const COMPANY = {
     name:    "LPKS ARIMA PERSADA",
     address: "Jl. Sidoharjo 1, Desa Negara Ratu, Kec. Natar, Kab. Lampung Selatan",
-    phones:  "Telp/WA: 0813-7908-7768 · 0812-8267-4707 · 0823-7512-8230",
     email:   "Email: arimapersada@gmail.com",
     city:    "Lampung Selatan"
   };
