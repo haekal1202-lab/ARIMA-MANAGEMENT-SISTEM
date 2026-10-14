@@ -29,6 +29,7 @@ window.ArimaPdf = (() => {
 
   const MARGIN = 18;
   const HEADER_HEIGHT = 56;
+  const FOOTER_OFFSET = 22;    // jarak footer dari bawah halaman
 
   const COMPANY = {
     name:    "LPKS ARIMA PERSADA",
@@ -192,7 +193,7 @@ window.ArimaPdf = (() => {
       pdf.text(opts.documentDate, pageWidth - MARGIN, 34.5, { align: "right" });
     }
 
-    return 68;
+    return 68; // Y awal konten
   }
 
   function drawInfoBox(pdf, x, y, width, height, title, lines) {
@@ -227,10 +228,11 @@ window.ArimaPdf = (() => {
   }
 
   function drawItemsTable(pdf, x, y, width, headers, rows, colWidths) {
-    const rowHeight = 8;
-    const headerHeight = 9;
+    const rowHeight = 8.5;
+    const headerHeight = 9.5;
     const accent = COLOR.accent;
 
+    // Header tabel
     pdf.setFillColor(...accent);
     pdf.rect(x, y, width, headerHeight, "F");
     pdf.setTextColor(255, 255, 255);
@@ -240,13 +242,14 @@ window.ArimaPdf = (() => {
     let cx = x + 4;
     headers.forEach((h, i) => {
       if (i === headers.length - 1) {
-        pdf.text(h, x + width - 4, y + 6, { align: "right" });
+        pdf.text(h, x + width - 4, y + 6.3, { align: "right" });
       } else {
-        pdf.text(h, cx, y + 6);
+        pdf.text(h, cx, y + 6.3);
       }
       cx += colWidths[i];
     });
 
+    // Baris data
     let ry = y + headerHeight;
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(9);
@@ -259,9 +262,9 @@ window.ArimaPdf = (() => {
       row.forEach((cell, i) => {
         pdf.setTextColor(50, 50, 55);
         if (i === row.length - 1) {
-          pdf.text(String(cell ?? ""), x + width - 4, ry + 5.5, { align: "right" });
+          pdf.text(String(cell ?? ""), x + width - 4, ry + 5.8, { align: "right" });
         } else {
-          pdf.text(String(cell ?? ""), rx, ry + 5.5);
+          pdf.text(String(cell ?? ""), rx, ry + 5.8);
         }
         rx += colWidths[i];
       });
@@ -271,6 +274,7 @@ window.ArimaPdf = (() => {
       pdf.line(x, ry, x + width, ry);
     });
 
+    // Outline
     pdf.setDrawColor(...COLOR.border);
     pdf.setLineWidth(0.3);
     pdf.rect(x, y, width, headerHeight + rows.length * rowHeight, "S");
@@ -309,7 +313,7 @@ window.ArimaPdf = (() => {
 
   /**
    * Blok tanda tangan: Nama → Garis → Jabatan
-   * Input name bisa berupa "Nama - Jabatan" atau hanya "Nama".
+   * Input name bisa "Nama - Jabatan" atau hanya "Nama".
    */
   function drawSignatureBlock(pdf, x, y, city, role, name) {
     const today = new Date().toLocaleDateString("id-ID", {
@@ -327,40 +331,44 @@ window.ArimaPdf = (() => {
 
     const blockWidth = 60;
 
+    // Baris 1: Kota, tanggal
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(9);
     pdf.setTextColor(...COLOR.body);
     pdf.text(`${city}, ${today}`, x, y);
-    pdf.text(role || "", x, y + 4.5);
 
+    // Baris 2: "Hormat kami,"
+    pdf.text(role || "", x, y + 5);
+
+    // Ruang tanda tangan kosong, lalu nama
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(9.5);
     pdf.setTextColor(...COLOR.dark);
-    pdf.text(personName || "-", x, y + 18);
+    pdf.text(personName || "-", x, y + 24);
 
+    // Garis tanda tangan
     pdf.setDrawColor(120, 120, 125);
     pdf.setLineWidth(0.3);
-    pdf.line(x, y + 20.5, x + blockWidth, y + 20.5);
+    pdf.line(x, y + 26.5, x + blockWidth, y + 26.5);
 
+    // Jabatan di bawah garis
     if (personRole) {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8.5);
       pdf.setTextColor(...COLOR.muted);
-      pdf.text(personRole, x, y + 25);
+      pdf.text(personRole, x, y + 31);
     }
+
+    return y + 31; // Y akhir block
   }
 
   /**
-   * Footer fleksibel: kalau y diberikan → taruh di bawah konten.
-   * Kalau tidak → taruh di bottom halaman.
+   * Footer di bottom halaman.
    */
-  function drawFooter(pdf, note, y) {
+  function drawFooter(pdf, note) {
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-
-    const footerTop = (typeof y === "number" && y > 0)
-      ? y
-      : pageHeight - 22;
+    const footerTop = pageHeight - FOOTER_OFFSET;
 
     pdf.setDrawColor(...COLOR.border);
     pdf.setLineWidth(0.3);
@@ -371,31 +379,6 @@ window.ArimaPdf = (() => {
     pdf.setTextColor(...COLOR.muted);
     const lines = pdf.splitTextToSize(note, pageWidth - MARGIN * 2);
     pdf.text(lines, MARGIN, footerTop + 5);
-
-    return footerTop + 5 + lines.length * 3.5;
-  }
-
-  function ensureSpace(pdf, y, needed) {
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    if (y + needed > pageHeight - 20) {
-      pdf.addPage();
-      return 30;
-    }
-    return y;
-  }
-
-  /**
-   * Potong tinggi halaman setelah konten + footer.
-   * Kalau jsPDF tidak support, minimal footer sudah mengikuti konten.
-   */
-  function finalizePdf(pdf, lastY) {
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const targetHeight = Math.max(140, lastY + 8);
-    if (targetHeight < pageHeight) {
-      try {
-        pdf.internal.pageSize.height = targetHeight;
-      } catch (e) { /* abaikan kalau tidak support */ }
-    }
   }
 
 
@@ -425,7 +408,7 @@ window.ArimaPdf = (() => {
       "WhatsApp: " + ((student && student.NO_WA) || "-"),
       "Tagihan: " + (payment.BILLING_ID || "-")
     ]);
-    y += 40;
+    y += 44;
 
     // Tabel rincian
     y = drawItemsTable(
@@ -439,7 +422,7 @@ window.ArimaPdf = (() => {
       ]],
       [inner * 0.55, inner * 0.15, inner * 0.15, inner * 0.15]
     );
-    y += 6;
+    y += 10;
 
     // Terbilang
     pdf.setFont("helvetica", "italic");
@@ -447,25 +430,21 @@ window.ArimaPdf = (() => {
     pdf.setTextColor(90, 90, 96);
     const terbilangText = "Terbilang: " + capitalize(terbilang(payment.AMOUNT));
     pdf.text(pdf.splitTextToSize(terbilangText, inner), MARGIN, y);
-    y += 10;
+    y += 12;
 
     // Total
     drawTotalBox(pdf, MARGIN, y, inner, "TOTAL DITERIMA", formatRupiah(payment.AMOUNT));
-    y += 28;
+    y += 22 + 24; // tinggi box + spacing ke TTD
 
-    // Tanda tangan
+    // Tanda tangan (kanan bawah)
     const receiptSigner = String(payment.REFERENCE_NO || "Admin LPKS Arima Persada").trim();
     drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", receiptSigner);
-    y += 30;
 
-    // Footer di bawah konten
-    const footerEnd = drawFooter(pdf,
+    // Footer (bottom halaman)
+    drawFooter(pdf,
       "Kuitansi ini sah sebagai bukti pembayaran yang tercatat di sistem LPKS Arima Persada. " +
-      "Pembayaran yang sudah tercatat otomatis tersinkron dengan mutasi keuangan.",
-      y + 6
+      "Pembayaran yang sudah tercatat otomatis tersinkron dengan mutasi keuangan."
     );
-
-    finalizePdf(pdf, footerEnd);
 
     const fileName = `kuitansi-${safeFileName(payment.PAYMENT_ID || "pembayaran")}.pdf`;
     return { pdf, fileName };
@@ -498,7 +477,7 @@ window.ArimaPdf = (() => {
       "WhatsApp: " + ((student && student.NO_WA) || "-"),
       "Program: " + ((student && student.PROGRAM) || "-")
     ]);
-    y += 40;
+    y += 44;
 
     // Tabel rincian
     y = drawItemsTable(
@@ -512,7 +491,7 @@ window.ArimaPdf = (() => {
       ]],
       [inner * 0.5, inner * 0.18, inner * 0.16, inner * 0.16]
     );
-    y += 6;
+    y += 10;
 
     // Status
     drawStatusRow(pdf, MARGIN, y, "Status tagihan: ", invoice.STATUS || "-");
@@ -523,7 +502,7 @@ window.ArimaPdf = (() => {
       drawStatusRow(pdf, MARGIN, y, "Penerima: ", invoice.PENERIMA);
       y += 6;
     }
-    y += 4;
+    y += 6;
 
     // Terbilang
     pdf.setFont("helvetica", "italic");
@@ -531,13 +510,13 @@ window.ArimaPdf = (() => {
     pdf.setTextColor(90, 90, 96);
     const terbilangText = "Terbilang: " + capitalize(terbilang(invoice.AMOUNT));
     pdf.text(pdf.splitTextToSize(terbilangText, inner), MARGIN, y);
-    y += 10;
+    y += 12;
 
     // Total
     drawTotalBox(pdf, MARGIN, y, inner, "TOTAL TAGIHAN", formatRupiah(invoice.AMOUNT));
-    y += 26;
+    y += 22 + 12;
 
-    // Catatan
+    // Catatan (jika ada)
     if (invoice.NOTES) {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8.5);
@@ -547,23 +526,21 @@ window.ArimaPdf = (() => {
       pdf.setTextColor(...COLOR.body);
       const noteLines = pdf.splitTextToSize(String(invoice.NOTES), inner);
       pdf.text(noteLines, MARGIN, y + 5);
-      y += 5 + noteLines.length * 4 + 4;
+      y += 5 + noteLines.length * 4 + 8;
+    } else {
+      y += 12;
     }
 
-    // Tanda tangan
+    // Tanda tangan (kanan bawah)
     const invoiceSigner = String(invoice.PENERIMA || "Admin LPKS Arima Persada").trim();
     drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", invoiceSigner);
-    y += 30;
 
-    // Footer
-    const footerEnd = drawFooter(pdf,
+    // Footer (bottom halaman)
+    drawFooter(pdf,
       "Mohon melakukan pembayaran sebelum tanggal jatuh tempo. Apabila terdapat kendala pembayaran " +
       "atau membutuhkan informasi lebih lanjut, silakan menghubungi Pak Suwardi (0813-7908-7768), " +
-      "Sensei Rachmat (0812-8267-4707), atau Admin LPKS Arima Persada (0823-7512-8230).",
-      y + 6
+      "Sensei Rachmat (0812-8267-4707), atau Admin LPKS Arima Persada (0823-7512-8230)."
     );
-
-    finalizePdf(pdf, footerEnd);
 
     const fileName = `tagihan-${safeFileName(invoice.BILLING_ID || invoice.ID_SISWA)}.pdf`;
     return { pdf, fileName };
@@ -598,7 +575,7 @@ window.ArimaPdf = (() => {
       "Email: " + ((senseiRow && senseiRow.EMAIL) || "-"),
       "WhatsApp: " + ((senseiRow && senseiRow.NO_WA) || "-")
     ]);
-    y += 40;
+    y += 44;
 
     // Hitung komponen
     const baseAmount = Number(salaryRow.BASE_AMOUNT || 0);
@@ -623,7 +600,7 @@ window.ArimaPdf = (() => {
       ],
       [inner * 0.65, inner * 0.35]
     );
-    y += 6;
+    y += 10;
 
     // Terbilang
     pdf.setFont("helvetica", "italic");
@@ -631,11 +608,11 @@ window.ArimaPdf = (() => {
     pdf.setTextColor(90, 90, 96);
     const terbilangText = "Terbilang: " + capitalize(terbilang(netSalary));
     pdf.text(pdf.splitTextToSize(terbilangText, inner), MARGIN, y);
-    y += 10;
+    y += 12;
 
     // Total gaji bersih
     drawTotalBox(pdf, MARGIN, y, inner, "GAJI BERSIH DITERIMA", formatRupiah(netSalary));
-    y += 26;
+    y += 22 + 10;
 
     // Status pembayaran
     drawStatusRow(pdf, MARGIN, y, "Status pembayaran: ", salaryRow.PAYMENT_STATUS || "-");
@@ -648,9 +625,9 @@ window.ArimaPdf = (() => {
       pdf.setTextColor(...COLOR.dark);
       pdf.text(dateText(salaryRow.PAYMENT_DATE), pageWidth / 2 + 24, y);
     }
-    y += 8;
+    y += 12;
 
-    // Catatan
+    // Catatan (jika ada)
     if (salaryRow.NOTES) {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8.5);
@@ -660,23 +637,21 @@ window.ArimaPdf = (() => {
       pdf.setTextColor(...COLOR.body);
       const noteLines = pdf.splitTextToSize(String(salaryRow.NOTES), inner);
       pdf.text(noteLines, MARGIN, y + 5);
-      y += 5 + noteLines.length * 4 + 4;
+      y += 5 + noteLines.length * 4 + 8;
+    } else {
+      y += 8;
     }
 
-    // Tanda tangan
+    // Tanda tangan (kanan bawah)
     const salarySigner = String(salaryRow.PENERIMA || "Admin LPKS Arima Persada").trim();
     drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", salarySigner);
-    y += 30;
 
-    // Footer
-    const footerEnd = drawFooter(pdf,
+    // Footer (bottom halaman)
+    drawFooter(pdf,
       "Slip gaji ini dihasilkan otomatis dari sistem ARIMA MANAGEMENT SYSTEM. " +
       "Perhitungan JP berdasarkan absensi mengajar sensei (1 JP = 45 menit, di luar waktu istirahat " +
-      "10.00–10.15 dan 12.00–13.15). Simpan dokumen ini sebagai bukti resmi penerimaan gaji.",
-      y + 6
+      "10.00–10.15 dan 12.00–13.15). Simpan dokumen ini sebagai bukti resmi penerimaan gaji."
     );
-
-    finalizePdf(pdf, footerEnd);
 
     const fileName = `slip-gaji-${safeFileName(salaryRow.SALARY_ID || "sensei")}.pdf`;
     return { pdf, fileName };
