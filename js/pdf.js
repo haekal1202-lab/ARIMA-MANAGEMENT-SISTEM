@@ -1,5 +1,6 @@
 /**
  * ARIMA MANAGEMENT SYSTEM — PDF MODULE
+ * Design: Elegant black-dominant with subtle red accent
  * =====================================
  * Menyediakan helper PDF profesional untuk:
  *  - Kuitansi pembayaran (PAYMENTS)
@@ -7,41 +8,43 @@
  *  - Slip gaji sensei (SALARY)
  *
  * Dependency: jsPDF 2.5.2 (dimuat otomatis dari CDN saat pertama dipakai).
- * Semua fungsi publik diakses via window.ArimaPdf.
  */
 window.ArimaPdf = (() => {
   "use strict";
 
   /* =========================================================
-   * KONSTANTA
+   * PALET WARNA — DOMINAN HITAM
    * ========================================================= */
 
   const COLOR = {
-    accent:  [215, 25, 32],
-    dark:    [34, 34, 38],
+    black:   [17, 17, 19],
+    ink:     [30, 30, 34],
     body:    [75, 75, 80],
     muted:   [140, 140, 148],
+    subtle:  [200, 200, 205],
     light:   [247, 248, 250],
-    zebra:   [249, 249, 251],
+    zebra:   [250, 250, 252],
     border:  [228, 229, 233],
-    line:    [235, 236, 240]
+    line:    [235, 236, 240],
+    accent:  [215, 25, 32],
+    white:   [255, 255, 255]
   };
 
   const MARGIN = 18;
-  const HEADER_HEIGHT = 56;
-  const FOOTER_OFFSET = 22;    // jarak footer dari bawah halaman
+  const HEADER_HEIGHT = 44;    // kompak (dari 56 → 44)
+  const FOOTER_OFFSET = 18;
 
   const COMPANY = {
     name:    "LPKS ARIMA PERSADA",
-    address: "Jl. Sidoharjo 1, Desa Negara Ratu, Kec. Natar, Kab. Lampung Selatan",
-    phones:  "Telp/WA: 0813-7908-7768 · 0812-8267-4707 · 0823-7512-8230",
-    email:   "Email: arimapersada@gmail.com",
+    address: "Jl. Sidoharjo 1, Negara Ratu, Natar, Lampung Selatan",
+    phones:  "0813-7908-7768  ·  0812-8267-4707",
+    email:   "arimapersada@gmail.com",
     city:    "Lampung Selatan"
   };
 
 
   /* =========================================================
-   * LOADER (jsPDF + logo)
+   * LOADER
    * ========================================================= */
 
   let __pdfLibPromise = null;
@@ -55,7 +58,7 @@ window.ArimaPdf = (() => {
           if (window.jspdf?.jsPDF) resolve(window.jspdf.jsPDF);
           else reject(new Error("Library PDF tidak tersedia setelah dimuat."));
         };
-        script.onerror = () => reject(new Error("Library PDF tidak dapat dimuat. Periksa koneksi internet."));
+        script.onerror = () => reject(new Error("Library PDF tidak dapat dimuat."));
         document.head.appendChild(script);
       });
     }
@@ -72,14 +75,11 @@ window.ArimaPdf = (() => {
             const canvas = document.createElement("canvas");
             canvas.width = image.naturalWidth;
             canvas.height = image.naturalHeight;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(image, 0, 0);
+            canvas.getContext("2d").drawImage(image, 0, 0);
             resolve(canvas.toDataURL("image/png"));
-          } catch (err) {
-            reject(new Error("Logo tidak dapat diproses: " + err.message));
-          }
+          } catch (err) { reject(err); }
         };
-        image.onerror = () => reject(new Error("Logo LPKS Arima Persada tidak dapat dimuat."));
+        image.onerror = () => reject(new Error("Logo gagal dimuat."));
         image.src = new URL("assets/logo.webp", document.baseURI).href;
       });
     }
@@ -94,9 +94,7 @@ window.ArimaPdf = (() => {
   function formatRupiah(value) {
     const number = Number(value || 0);
     return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0
+      style: "currency", currency: "IDR", maximumFractionDigits: 0
     }).format(Number.isFinite(number) ? number : 0);
   }
 
@@ -108,6 +106,13 @@ window.ArimaPdf = (() => {
   function dateText(value) {
     const text = String(value || "");
     return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : text;
+  }
+
+  function dateLong(value) {
+    const text = String(value || "");
+    if (!/^\d{4}-\d{2}-\d{2}/.test(text)) return text || "-";
+    const d = new Date(text.slice(0, 10) + "T00:00:00");
+    return d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   }
 
   function monthLabel(period) {
@@ -146,105 +151,122 @@ window.ArimaPdf = (() => {
 
 
   /* =========================================================
-   * GAMBAR KOMPONEN PDF
+   * KOMPONEN PDF
    * ========================================================= */
 
+  /**
+   * Header kompak & elegan: logo kecil, nama perusahaan besar hitam,
+   * dokumen type di kanan, garis bawah hitam tebal + aksen merah tipis.
+   */
   function drawHeader(pdf, opts = {}) {
     const pageWidth = pdf.internal.pageSize.getWidth();
-    const accent = opts.accent || COLOR.accent;
 
-    pdf.setFillColor(...COLOR.light);
-    pdf.rect(0, 0, pageWidth, HEADER_HEIGHT, "F");
-
-    pdf.setFillColor(...accent);
-    pdf.rect(0, HEADER_HEIGHT, pageWidth, 1.2, "F");
-
+    // Logo (kiri, kecil)
     if (opts.logoData) {
       try {
-        pdf.addImage(opts.logoData, "PNG", MARGIN, 14, 26, 26);
-      } catch (_) { /* lanjut tanpa logo */ }
+        pdf.addImage(opts.logoData, "PNG", MARGIN, 10, 22, 22);
+      } catch (_) {}
     }
 
-    pdf.setTextColor(...COLOR.dark);
+    // Nama perusahaan (kiri)
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(15);
-    pdf.text(COMPANY.name, MARGIN + 32, 22);
+    pdf.setFontSize(13);
+    pdf.setTextColor(...COLOR.black);
+    pdf.text(COMPANY.name, MARGIN + 28, 17);
 
+    // Alamat & kontak (2 baris, small)
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(8.5);
-    pdf.setTextColor(115, 115, 122);
-    pdf.text(COMPANY.address, MARGIN + 32, 29);
-    pdf.text(COMPANY.phones, MARGIN + 32, 34.5);
-    pdf.text(COMPANY.email, MARGIN + 32, 40);
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...COLOR.muted);
+    pdf.text(COMPANY.address, MARGIN + 28, 23);
+    pdf.text(`${COMPANY.phones}  ·  ${COMPANY.email}`, MARGIN + 28, 28);
 
+    // Dokumen type (kanan atas, UPPERCASE, letter-spacing feel)
     if (opts.documentType) {
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.setTextColor(...accent);
-      pdf.text(opts.documentType, pageWidth - MARGIN, 22, { align: "right" });
+      pdf.setFontSize(10);
+      pdf.setTextColor(...COLOR.black);
+      pdf.text(opts.documentType, pageWidth - MARGIN, 17, { align: "right" });
     }
     if (opts.documentNumber) {
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(115, 115, 122);
-      pdf.text(opts.documentNumber, pageWidth - MARGIN, 29, { align: "right" });
+      pdf.setFontSize(8);
+      pdf.setTextColor(...COLOR.muted);
+      pdf.text(opts.documentNumber, pageWidth - MARGIN, 23, { align: "right" });
     }
     if (opts.documentDate) {
-      pdf.text(opts.documentDate, pageWidth - MARGIN, 34.5, { align: "right" });
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.setTextColor(...COLOR.muted);
+      pdf.text(opts.documentDate, pageWidth - MARGIN, 28, { align: "right" });
     }
 
-    return 68; // Y awal konten
+    // Garis bawah header: hitam tebal + aksen merah tipis
+    pdf.setFillColor(...COLOR.black);
+    pdf.rect(0, HEADER_HEIGHT, pageWidth, 0.8, "F");
+    pdf.setFillColor(...COLOR.accent);
+    pdf.rect(0, HEADER_HEIGHT + 0.8, pageWidth, 0.35, "F");
+
+    return HEADER_HEIGHT + 8; // mulai konten di 52mm
   }
 
+  /**
+   * Kotak info dengan border kiri hitam tebal.
+   */
   function drawInfoBox(pdf, x, y, width, height, title, lines) {
+    // Border kiri hitam
+    pdf.setFillColor(...COLOR.black);
+    pdf.rect(x, y, 1.2, height, "F");
+
+    // Background sangat light
     pdf.setFillColor(...COLOR.light);
-    pdf.roundedRect(x, y, width, height, 2, 2, "F");
-    pdf.setDrawColor(...COLOR.border);
-    pdf.setLineWidth(0.3);
-    pdf.roundedRect(x, y, width, height, 2, 2, "S");
+    pdf.rect(x + 1.2, y, width - 1.2, height, "F");
 
+    // Title kecil muted uppercase
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(8);
+    pdf.setFontSize(7);
     pdf.setTextColor(...COLOR.muted);
-    pdf.text(title, x + 6, y + 7);
+    pdf.text(title, x + 7, y + 6.5);
 
-    pdf.setFont("helvetica", "normal");
-    let ly = y + 14;
+    // Isi
+    let ly = y + 13;
     lines.forEach((line, idx) => {
       if (idx === 0) {
         pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(11);
-        pdf.setTextColor(...COLOR.dark);
-        pdf.text(String(line), x + 6, ly);
+        pdf.setFontSize(10.5);
+        pdf.setTextColor(...COLOR.black);
+        pdf.text(String(line), x + 7, ly);
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9);
-        ly += 6;
+        pdf.setFontSize(8.5);
+        ly += 5.5;
       } else {
-        pdf.setTextColor(90, 90, 96);
-        pdf.text(String(line), x + 6, ly);
-        ly += 5;
+        pdf.setTextColor(...COLOR.body);
+        pdf.text(String(line), x + 7, ly);
+        ly += 4.5;
       }
     });
   }
 
+  /**
+   * Tabel dengan header HITAM (bukan merah).
+   */
   function drawItemsTable(pdf, x, y, width, headers, rows, colWidths) {
-    const rowHeight = 8.5;
-    const headerHeight = 9.5;
-    const accent = COLOR.accent;
+    const rowHeight = 8;
+    const headerHeight = 8.5;
 
-    // Header tabel
-    pdf.setFillColor(...accent);
+    // Header hitam
+    pdf.setFillColor(...COLOR.black);
     pdf.rect(x, y, width, headerHeight, "F");
-    pdf.setTextColor(255, 255, 255);
+    pdf.setTextColor(...COLOR.white);
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(8.5);
+    pdf.setFontSize(8);
 
     let cx = x + 4;
     headers.forEach((h, i) => {
       if (i === headers.length - 1) {
-        pdf.text(h, x + width - 4, y + 6.3, { align: "right" });
+        pdf.text(h, x + width - 4, y + 5.7, { align: "right" });
       } else {
-        pdf.text(h, cx, y + 6.3);
+        pdf.text(h, cx, y + 5.7);
       }
       cx += colWidths[i];
     });
@@ -252,7 +274,7 @@ window.ArimaPdf = (() => {
     // Baris data
     let ry = y + headerHeight;
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
+    pdf.setFontSize(8.5);
     rows.forEach((row, idx) => {
       if (idx % 2 === 1) {
         pdf.setFillColor(...COLOR.zebra);
@@ -260,60 +282,63 @@ window.ArimaPdf = (() => {
       }
       let rx = x + 4;
       row.forEach((cell, i) => {
-        pdf.setTextColor(50, 50, 55);
+        pdf.setTextColor(...COLOR.ink);
         if (i === row.length - 1) {
-          pdf.text(String(cell ?? ""), x + width - 4, ry + 5.8, { align: "right" });
+          pdf.text(String(cell ?? ""), x + width - 4, ry + 5.5, { align: "right" });
         } else {
-          pdf.text(String(cell ?? ""), rx, ry + 5.8);
+          pdf.text(String(cell ?? ""), rx, ry + 5.5);
         }
         rx += colWidths[i];
       });
       ry += rowHeight;
       pdf.setDrawColor(...COLOR.line);
-      pdf.setLineWidth(0.2);
+      pdf.setLineWidth(0.15);
       pdf.line(x, ry, x + width, ry);
     });
 
     // Outline
     pdf.setDrawColor(...COLOR.border);
-    pdf.setLineWidth(0.3);
+    pdf.setLineWidth(0.25);
     pdf.rect(x, y, width, headerHeight + rows.length * rowHeight, "S");
 
     return ry;
   }
 
-  function drawTotalBox(pdf, x, y, width, label, value, accentColor = COLOR.accent) {
-    pdf.setFillColor(...COLOR.light);
-    pdf.roundedRect(x, y, width, 22, 2, 2, "F");
-    pdf.setDrawColor(...accentColor);
-    pdf.setLineWidth(0.8);
-    pdf.roundedRect(x, y, width, 22, 2, 2, "S");
+  /**
+   * Kotak total: HITAM pekat dengan label putih & value putih/merah.
+   */
+  function drawTotalBox(pdf, x, y, width, label, value, accentValue = true) {
+    pdf.setFillColor(...COLOR.black);
+    pdf.roundedRect(x, y, width, 20, 1.5, 1.5, "F");
 
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9.5);
-    pdf.setTextColor(...COLOR.body);
-    pdf.text(label, x + 7, y + 14);
+    pdf.setFontSize(9);
+    pdf.setTextColor(...COLOR.white);
+    pdf.text(label, x + 8, y + 13);
 
-    pdf.setFontSize(15);
-    pdf.setTextColor(...accentColor);
-    pdf.text(value, x + width - 7, y + 15, { align: "right" });
+    pdf.setFontSize(14);
+    if (accentValue) {
+      pdf.setTextColor(255, 90, 90);   // merah cerah untuk kontras di hitam
+    } else {
+      pdf.setTextColor(...COLOR.white);
+    }
+    pdf.text(value, x + width - 8, y + 13, { align: "right" });
   }
 
-  function drawStatusRow(pdf, x, y, label, value, bold = true) {
+  function drawStatusRow(pdf, x, y, label, value) {
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
-    pdf.setTextColor(...COLOR.body);
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(...COLOR.muted);
     pdf.text(label, x, y);
 
-    pdf.setFont("helvetica", bold ? "bold" : "normal");
-    pdf.setTextColor(...COLOR.dark);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...COLOR.black);
     const labelWidth = pdf.getTextWidth(label);
     pdf.text(String(value || "-"), x + labelWidth + 1.5, y);
   }
 
   /**
-   * Blok tanda tangan: Nama → Garis → Jabatan
-   * Input name bisa "Nama - Jabatan" atau hanya "Nama".
+   * Blok tanda tangan: kota/tanggal → "Hormat kami," italic → nama → garis → jabatan.
    */
   function drawSignatureBlock(pdf, x, y, city, role, name) {
     const today = new Date().toLocaleDateString("id-ID", {
@@ -329,61 +354,60 @@ window.ArimaPdf = (() => {
       personRole = raw.slice(sepIdx + 3).trim();
     }
 
-    const blockWidth = 60;
+    const blockWidth = 55;
 
-    // Baris 1: Kota, tanggal
+    // Kota, tanggal
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
-    pdf.setTextColor(...COLOR.body);
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(...COLOR.muted);
     pdf.text(`${city}, ${today}`, x, y);
 
-    // Baris 2: "Hormat kami,"
-    pdf.text(role || "", x, y + 5);
+    // "Hormat kami," italic
+    pdf.setFont("helvetica", "italic");
+    pdf.text(role || "", x, y + 4.5);
 
-    // Ruang tanda tangan kosong, lalu nama
+    // Nama (bold hitam)
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(9.5);
-    pdf.setTextColor(...COLOR.dark);
-    pdf.text(personName || "-", x, y + 24);
+    pdf.setTextColor(...COLOR.black);
+    pdf.text(personName || "-", x, y + 22);
 
-    // Garis tanda tangan
-    pdf.setDrawColor(120, 120, 125);
-    pdf.setLineWidth(0.3);
-    pdf.line(x, y + 26.5, x + blockWidth, y + 26.5);
+    // Garis hitam
+    pdf.setDrawColor(...COLOR.black);
+    pdf.setLineWidth(0.4);
+    pdf.line(x, y + 24, x + blockWidth, y + 24);
 
-    // Jabatan di bawah garis
+    // Jabatan
     if (personRole) {
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8.5);
+      pdf.setFontSize(8);
       pdf.setTextColor(...COLOR.muted);
-      pdf.text(personRole, x, y + 31);
+      pdf.text(personRole, x, y + 28.5);
     }
-
-    return y + 31; // Y akhir block
   }
 
   /**
-   * Footer di bottom halaman.
+   * Footer elegan: garis hitam tipis + teks kecil.
    */
   function drawFooter(pdf, note) {
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const footerTop = pageHeight - FOOTER_OFFSET;
 
-    pdf.setDrawColor(...COLOR.border);
-    pdf.setLineWidth(0.3);
+    pdf.setDrawColor(...COLOR.black);
+    pdf.setLineWidth(0.4);
     pdf.line(MARGIN, footerTop, pageWidth - MARGIN, footerTop);
 
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(7.5);
+    pdf.setFontSize(7);
     pdf.setTextColor(...COLOR.muted);
     const lines = pdf.splitTextToSize(note, pageWidth - MARGIN * 2);
-    pdf.text(lines, MARGIN, footerTop + 5);
+    pdf.text(lines, MARGIN, footerTop + 4.5);
   }
 
 
   /* =========================================================
-   * FUNGSI PUBLIK 1 — KUITANSI PEMBAYARAN
+   * KUITANSI PEMBAYARAN
    * ========================================================= */
 
   async function buildReceipt(payment, student) {
@@ -398,22 +422,22 @@ window.ArimaPdf = (() => {
       logoData,
       documentType: "KUITANSI PEMBAYARAN",
       documentNumber: "No: " + (payment.PAYMENT_ID || "-"),
-      documentDate: "Tanggal: " + (dateText(payment.PAYMENT_DATE) || "-")
+      documentDate: "Tanggal: " + (dateLong(payment.PAYMENT_DATE))
     });
 
     // Info siswa
-    drawInfoBox(pdf, MARGIN, y, inner, 34, "DITERIMA DARI", [
+    drawInfoBox(pdf, MARGIN, y, inner, 32, "DITERIMA DARI", [
       (student && student.NAMA) || "-",
       "ID Siswa: " + (payment.ID_SISWA || "-"),
       "WhatsApp: " + ((student && student.NO_WA) || "-"),
       "Tagihan: " + (payment.BILLING_ID || "-")
     ]);
-    y += 44;
+    y += 40;
 
-    // Tabel rincian
+    // Tabel
     y = drawItemsTable(
       pdf, MARGIN, y, inner,
-      ["Keterangan", "Metode", "Penerima", "Jumlah"],
+      ["KETERANGAN", "METODE", "PENERIMA", "JUMLAH"],
       [[
         payment.NOTES || ("Pembayaran tagihan " + (payment.BILLING_ID || "-")),
         payment.PAYMENT_METHOD || "-",
@@ -426,33 +450,31 @@ window.ArimaPdf = (() => {
 
     // Terbilang
     pdf.setFont("helvetica", "italic");
-    pdf.setFontSize(9);
-    pdf.setTextColor(90, 90, 96);
-    const terbilangText = "Terbilang: " + capitalize(terbilang(payment.AMOUNT));
-    pdf.text(pdf.splitTextToSize(terbilangText, inner), MARGIN, y);
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(...COLOR.body);
+    pdf.text(pdf.splitTextToSize("Terbilang: " + capitalize(terbilang(payment.AMOUNT)), inner), MARGIN, y);
     y += 12;
 
     // Total
     drawTotalBox(pdf, MARGIN, y, inner, "TOTAL DITERIMA", formatRupiah(payment.AMOUNT));
-    y += 22 + 24; // tinggi box + spacing ke TTD
+    y += 20 + 28;
 
-    // Tanda tangan (kanan bawah)
+    // TTD
     const receiptSigner = String(payment.REFERENCE_NO || "Admin LPKS Arima Persada").trim();
     drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", receiptSigner);
 
-    // Footer (bottom halaman)
+    // Footer
     drawFooter(pdf,
       "Kuitansi ini sah sebagai bukti pembayaran yang tercatat di sistem LPKS Arima Persada. " +
       "Pembayaran yang sudah tercatat otomatis tersinkron dengan mutasi keuangan."
     );
 
-    const fileName = `kuitansi-${safeFileName(payment.PAYMENT_ID || "pembayaran")}.pdf`;
-    return { pdf, fileName };
+    return { pdf, fileName: `kuitansi-${safeFileName(payment.PAYMENT_ID || "pembayaran")}.pdf` };
   }
 
 
   /* =========================================================
-   * FUNGSI PUBLIK 2 — SURAT TAGIHAN SISWA
+   * SURAT TAGIHAN SISWA
    * ========================================================= */
 
   async function buildInvoice(invoice, student) {
@@ -471,22 +493,22 @@ window.ArimaPdf = (() => {
     });
 
     // Info siswa
-    drawInfoBox(pdf, MARGIN, y, inner, 34, "DITAGIHKAN KEPADA", [
+    drawInfoBox(pdf, MARGIN, y, inner, 32, "DITAGIHKAN KEPADA", [
       (student && student.NAMA) || "-",
       "ID Siswa: " + (invoice.ID_SISWA || "-"),
       "WhatsApp: " + ((student && student.NO_WA) || "-"),
       "Program: " + ((student && student.PROGRAM) || "-")
     ]);
-    y += 44;
+    y += 40;
 
-    // Tabel rincian
+    // Tabel
     y = drawItemsTable(
       pdf, MARGIN, y, inner,
-      ["Deskripsi", "Kategori", "Jatuh Tempo", "Jumlah"],
+      ["DESKRIPSI", "KATEGORI", "JATUH TEMPO", "JUMLAH"],
       [[
         invoice.DESCRIPTION || "-",
         invoice.CATEGORY || "-",
-        dateText(invoice.DUE_DATE) || "-",
+        dateLong(invoice.DUE_DATE),
         formatRupiah(invoice.AMOUNT)
       ]],
       [inner * 0.5, inner * 0.18, inner * 0.16, inner * 0.16]
@@ -495,53 +517,51 @@ window.ArimaPdf = (() => {
 
     // Status
     drawStatusRow(pdf, MARGIN, y, "Status tagihan: ", invoice.STATUS || "-");
-    y += 6;
+    y += 12;
 
     // Terbilang
     pdf.setFont("helvetica", "italic");
-    pdf.setFontSize(9);
-    pdf.setTextColor(90, 90, 96);
-    const terbilangText = "Terbilang: " + capitalize(terbilang(invoice.AMOUNT));
-    pdf.text(pdf.splitTextToSize(terbilangText, inner), MARGIN, y);
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(...COLOR.body);
+    pdf.text(pdf.splitTextToSize("Terbilang: " + capitalize(terbilang(invoice.AMOUNT)), inner), MARGIN, y);
     y += 12;
 
     // Total
     drawTotalBox(pdf, MARGIN, y, inner, "TOTAL TAGIHAN", formatRupiah(invoice.AMOUNT));
-    y += 22 + 12;
+    y += 20 + 14;
 
-    // Catatan (jika ada)
+    // Catatan
     if (invoice.NOTES) {
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8.5);
+      pdf.setFontSize(8);
       pdf.setTextColor(...COLOR.muted);
       pdf.text("CATATAN", MARGIN, y);
       pdf.setFont("helvetica", "normal");
       pdf.setTextColor(...COLOR.body);
       const noteLines = pdf.splitTextToSize(String(invoice.NOTES), inner);
-      pdf.text(noteLines, MARGIN, y + 5);
-      y += 5 + noteLines.length * 4 + 8;
+      pdf.text(noteLines, MARGIN, y + 4.5);
+      y += 4.5 + noteLines.length * 3.8 + 8;
     } else {
       y += 12;
     }
 
-    // Tanda tangan (kanan bawah)
+    // TTD
     const invoiceSigner = String(invoice.PENERIMA || "Admin LPKS Arima Persada").trim();
     drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", invoiceSigner);
 
-    // Footer (bottom halaman)
+    // Footer
     drawFooter(pdf,
       "Mohon melakukan pembayaran sebelum tanggal jatuh tempo. Apabila terdapat kendala pembayaran " +
       "atau membutuhkan informasi lebih lanjut, silakan menghubungi Pak Suwardi (0813-7908-7768), " +
       "Sensei Rachmat (0812-8267-4707), atau Admin LPKS Arima Persada (0823-7512-8230)."
     );
 
-    const fileName = `tagihan-${safeFileName(invoice.BILLING_ID || invoice.ID_SISWA)}.pdf`;
-    return { pdf, fileName };
+    return { pdf, fileName: `tagihan-${safeFileName(invoice.BILLING_ID || invoice.ID_SISWA)}.pdf` };
   }
 
 
   /* =========================================================
-   * FUNGSI PUBLIK 3 — SLIP GAJI SENSEI
+   * SLIP GAJI SENSEI
    * ========================================================= */
 
   async function buildSalarySlip(salaryRow, senseiRow) {
@@ -562,13 +582,13 @@ window.ArimaPdf = (() => {
     });
 
     // Info sensei
-    drawInfoBox(pdf, MARGIN, y, inner, 34, "DIBERIKAN KEPADA", [
+    drawInfoBox(pdf, MARGIN, y, inner, 32, "DIBERIKAN KEPADA", [
       (senseiRow && senseiRow.NAMA) || "Sensei",
       "ID Sensei: " + (salaryRow.ID_SENSEI || "-"),
       "Email: " + ((senseiRow && senseiRow.EMAIL) || "-"),
       "WhatsApp: " + ((senseiRow && senseiRow.NO_WA) || "-")
     ]);
-    y += 44;
+    y += 40;
 
     // Hitung komponen
     const baseAmount = Number(salaryRow.BASE_AMOUNT || 0);
@@ -583,7 +603,7 @@ window.ArimaPdf = (() => {
     // Tabel komponen
     y = drawItemsTable(
       pdf, MARGIN, y, inner,
-      ["Komponen", "Jumlah"],
+      ["KOMPONEN", "JUMLAH"],
       [
         [`Gaji pokok (${formatNumber(jp)} JP × ${formatRupiah(rate)})`, formatRupiah(baseAmount)],
         ["Jumlah pertemuan tercatat", `${formatNumber(meetings)} pertemuan`],
@@ -597,62 +617,60 @@ window.ArimaPdf = (() => {
 
     // Terbilang
     pdf.setFont("helvetica", "italic");
-    pdf.setFontSize(9);
-    pdf.setTextColor(90, 90, 96);
-    const terbilangText = "Terbilang: " + capitalize(terbilang(netSalary));
-    pdf.text(pdf.splitTextToSize(terbilangText, inner), MARGIN, y);
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(...COLOR.body);
+    pdf.text(pdf.splitTextToSize("Terbilang: " + capitalize(terbilang(netSalary)), inner), MARGIN, y);
     y += 12;
 
-    // Total gaji bersih
+    // Total
     drawTotalBox(pdf, MARGIN, y, inner, "GAJI BERSIH DITERIMA", formatRupiah(netSalary));
-    y += 22 + 10;
+    y += 20 + 12;
 
-    // Status pembayaran
+    // Status
     drawStatusRow(pdf, MARGIN, y, "Status pembayaran: ", salaryRow.PAYMENT_STATUS || "-");
     if (salaryRow.PAYMENT_DATE) {
       pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(...COLOR.body);
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...COLOR.muted);
       pdf.text("Tanggal bayar: ", pageWidth / 2, y);
       pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(...COLOR.dark);
-      pdf.text(dateText(salaryRow.PAYMENT_DATE), pageWidth / 2 + 24, y);
+      pdf.setTextColor(...COLOR.black);
+      pdf.text(dateLong(salaryRow.PAYMENT_DATE), pageWidth / 2 + 24, y);
     }
     y += 12;
 
-    // Catatan (jika ada)
+    // Catatan
     if (salaryRow.NOTES) {
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8.5);
+      pdf.setFontSize(8);
       pdf.setTextColor(...COLOR.muted);
       pdf.text("CATATAN", MARGIN, y);
       pdf.setFont("helvetica", "normal");
       pdf.setTextColor(...COLOR.body);
       const noteLines = pdf.splitTextToSize(String(salaryRow.NOTES), inner);
-      pdf.text(noteLines, MARGIN, y + 5);
-      y += 5 + noteLines.length * 4 + 8;
+      pdf.text(noteLines, MARGIN, y + 4.5);
+      y += 4.5 + noteLines.length * 3.8 + 8;
     } else {
       y += 8;
     }
 
-    // Tanda tangan (kanan bawah)
+    // TTD
     const salarySigner = String(salaryRow.PENERIMA || "Admin LPKS Arima Persada").trim();
     drawSignatureBlock(pdf, pageWidth - MARGIN - 60, y, COMPANY.city, "Hormat kami,", salarySigner);
 
-    // Footer (bottom halaman)
+    // Footer
     drawFooter(pdf,
       "Slip gaji ini dihasilkan otomatis dari sistem ARIMA MANAGEMENT SYSTEM. " +
       "Perhitungan JP berdasarkan absensi mengajar sensei (1 JP = 45 menit, di luar waktu istirahat " +
       "10.00–10.15 dan 12.00–13.15). Simpan dokumen ini sebagai bukti resmi penerimaan gaji."
     );
 
-    const fileName = `slip-gaji-${safeFileName(salaryRow.SALARY_ID || "sensei")}.pdf`;
-    return { pdf, fileName };
+    return { pdf, fileName: `slip-gaji-${safeFileName(salaryRow.SALARY_ID || "sensei")}.pdf` };
   }
 
 
   /* =========================================================
-   * FUNGSI BANTUAN LAIN
+   * BANTUAN
    * ========================================================= */
 
   function pdfToBase64(pdf) {
