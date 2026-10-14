@@ -37,6 +37,10 @@ window.App = (() => {
         { key: "ASRAMA", label: "Asrama", type: "select", required: true, options: ["YA", "TIDAK"] },
         { key: "TANGGAL_MASUK", label: "Tanggal Masuk", type: "date", required: true },
         { key: "STATUS", label: "Status", type: "select", required: true, options: ["AKTIF", "NONAKTIF", "LULUS", "KELUAR"] }
+        { key: "SSW", label: "Ikut Program SSW", type: "select", required: false, options: ["YA", "TIDAK"] },
+        { key: "SSW_DETAIL", label: "Bidang SSW", type: "select", required: false, options: ["KAIGO", "FOOD SERVICE", "CONSTRUCTION", "AGRICULTURE", "BUILDING CLEANING", "MANUFACTURING", "FISHERY", "AUTO MAINTENANCE", "LAINNYA"] },
+        { key: "JFT_JLPT", label: "Sertifikat Bahasa Jepang", type: "select", required: false, options: ["TIDAK ADA", "JFT-BASIC", "JLPT N5", "JLPT N4", "JLPT N3", "JLPT N2", "JLPT N1"] },
+        { key: "JFT_JLPT_DATE", label: "Tanggal Sertifikat", type: "date", required: false },
       ]
     },
 
@@ -636,6 +640,7 @@ window.App = (() => {
             { key: "STATUS", label: "Status" }
           ], {
             actions: row => `
+              <button type="button" class="btn btn-small btn-primary" data-detail-student="${esc(row.ID_SISWA)}" data-row-number="${esc(row.__ROW_NUMBER || '')}">Detail</button>
               <button type="button" class="btn btn-small" data-edit-student="${esc(row.ID_SISWA)}" data-row-number="${esc(row.__ROW_NUMBER || '')}">Edit</button>
               <button type="button" class="btn btn-small btn-danger" data-delete-student="${esc(row.ID_SISWA)}" data-row-number="${esc(row.__ROW_NUMBER || '')}">Hapus</button>
             `
@@ -652,6 +657,16 @@ window.App = (() => {
           const row = rows.find(item => rowNumber && String(item.__ROW_NUMBER) === String(rowNumber))
             || rows.find(item => String(item.ID_SISWA) === String(id));
           if (row) openFormModal("students", row);
+        });
+      });
+
+      qsa("[data-detail-student]").forEach(button => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.detailStudent;
+          const rowNumber = button.dataset.rowNumber;
+          const row = rows.find(item => rowNumber && String(item.__ROW_NUMBER) === String(rowNumber))
+            || rows.find(item => String(item.ID_SISWA) === String(id));
+          if (row) openStudentDetailModal(row);
         });
       });
 
@@ -674,6 +689,211 @@ window.App = (() => {
     }
   }
 
+  /* =========================================================
+   * STUDENT DETAIL MODAL
+   * ========================================================= */
+
+  let __chartJsPromise = null;
+  function ensureChartJs() {
+    if (window.Chart) return Promise.resolve(window.Chart);
+    if (!__chartJsPromise) {
+      __chartJsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js";
+        script.onload = () => window.Chart ? resolve(window.Chart) : reject(new Error("Chart.js tidak tersedia."));
+        script.onerror = () => reject(new Error("Chart.js tidak dapat dimuat. Periksa koneksi internet."));
+        document.head.appendChild(script);
+      });
+    }
+    return __chartJsPromise;
+  }
+
+  async function openStudentDetailModal(student) {
+    if (!student) return;
+    document.getElementById("arima-student-detail")?.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "arima-student-detail";
+    modal.className = "modal-overlay form-modal";
+    modal.innerHTML = `
+      <div class="modal form-modal-shell student-detail-shell" role="dialog" aria-modal="true">
+        <div class="form-modal-header">
+          <div class="form-modal-heading">
+            <span class="form-modal-kicker">DETAIL SISWA</span>
+            <h2>${esc(student.NAMA || "Tanpa nama")}</h2>
+            <p>ID ${esc(student.ID_SISWA || "-")} · ${esc(student.PROGRAM || "-")} · Status ${esc(student.STATUS || "-")}</p>
+          </div>
+          <button type="button" class="modal-close" id="sd-close">×</button>
+        </div>
+        <div class="student-detail-body">
+          <section class="student-detail-section">
+            <h3>Data Pribadi</h3>
+            <div class="student-detail-grid">
+              <div><span>Nama Lengkap</span><strong>${esc(student.NAMA || "-")}</strong></div>
+              <div><span>ID Siswa</span><strong>${esc(student.ID_SISWA || "-")}</strong></div>
+              <div><span>NIK</span><strong>${esc(student.NIK || "-")}</strong></div>
+              <div><span>WhatsApp</span><strong>${esc(student.NO_WA || "-")}</strong></div>
+              <div><span>Nama Orang Tua/Wali</span><strong>${esc(student.NAMA_ORANG_TUA || "-")}</strong></div>
+              <div><span>WA Orang Tua/Wali</span><strong>${esc(student.NO_WA_ORANG_TUA || "-")}</strong></div>
+              <div><span>Asrama</span><strong>${esc(student.ASRAMA || "-")}</strong></div>
+              <div><span>Tanggal Masuk</span><strong>${esc(String(student.TANGGAL_MASUK || "").slice(0, 10) || "-")}</strong></div>
+            </div>
+          </section>
+
+          <section class="student-detail-section">
+            <h3>Program SSW</h3>
+            <div class="student-detail-grid">
+              <div><span>Ikut SSW</span><strong>${esc(student.SSW || "Belum diisi")}</strong></div>
+              <div><span>Bidang SSW</span><strong>${esc(student.SSW_DETAIL || "-")}</strong></div>
+            </div>
+          </section>
+
+          <section class="student-detail-section">
+            <h3>Sertifikat Bahasa Jepang</h3>
+            <div class="student-detail-grid">
+              <div><span>Level</span><strong>${esc(student.JFT_JLPT || "Belum diisi")}</strong></div>
+              <div><span>Tanggal Sertifikat</span><strong>${esc(String(student.JFT_JLPT_DATE || "").slice(0, 10) || "-")}</strong></div>
+            </div>
+          </section>
+
+          <section class="student-detail-section">
+            <h3>Rekap Absensi</h3>
+            <div class="student-attendance-filter">
+              <label>Dari<input type="date" id="sd-from" value="${defaultStartDate()}"></label>
+              <label>Sampai<input type="date" id="sd-to" value="${defaultEndDate()}"></label>
+              <button type="button" class="btn btn-primary" id="sd-apply">Terapkan</button>
+            </div>
+            <div id="sd-attendance-content">
+              <div class="muted" style="padding:20px 0;text-align:center;">Memuat data absensi...</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const close = () => {
+      if (modal._chart) { try { modal._chart.destroy(); } catch (_) {} }
+      modal.remove();
+    };
+    qs("#sd-close", modal).addEventListener("click", close);
+    modal.addEventListener("click", event => { if (event.target === modal) close(); });
+
+    const content = qs("#sd-attendance-content", modal);
+    const fromInput = qs("#sd-from", modal);
+    const toInput = qs("#sd-to", modal);
+
+    async function loadAttendance() {
+      content.innerHTML = `<div class="muted" style="padding:20px 0;text-align:center;">Memuat data absensi...</div>`;
+
+      try {
+        const response = await API.attendance();
+        if (response?.success === false) throw new Error(response.message || "Gagal memuat absensi.");
+
+        const from = fromInput.value;
+        const to = toInput.value;
+        const all = Array.isArray(response?.data) ? response.data : [];
+        const sid = String(student.ID_SISWA || "").trim().toUpperCase();
+
+        const filtered = all.filter(row => {
+          if (String(row.ACTOR_ID || "").trim().toUpperCase() !== sid) return false;
+          if (String(row.ACTOR_TYPE || "").trim().toUpperCase() !== "STUDENT") return false;
+          const tgl = String(row.TANGGAL || "").slice(0, 10);
+          if (from && tgl < from) return false;
+          if (to && tgl > to) return false;
+          return true;
+        }).sort((a, b) => String(b.TANGGAL || "").localeCompare(String(a.TANGGAL || "")));
+
+        const counts = { HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 };
+        filtered.forEach(row => {
+          const s = String(row.STATUS || "").trim().toUpperCase();
+          if (counts[s] !== undefined) counts[s] += 1;
+        });
+        const total = filtered.length;
+        const totalHadir = counts.HADIR + counts.TERLAMBAT;
+        const pct = total ? Math.round((totalHadir / total) * 100) : 0;
+
+        if (!total) {
+          content.innerHTML = `<div class="muted" style="padding:20px 0;text-align:center;">Tidak ada data absensi pada periode ini.</div>`;
+          return;
+        }
+
+        content.innerHTML = `
+          <div class="student-attendance-stats">
+            <div class="stat-card hadir"><strong>${formatNumber(counts.HADIR + counts.TERLAMBAT)}</strong><span>Hadir</span></div>
+            <div class="stat-card izin"><strong>${formatNumber(counts.IZIN + counts.SAKIT)}</strong><span>Izin / Sakit</span></div>
+            <div class="stat-card alpa"><strong>${formatNumber(counts.ALPA)}</strong><span>Alpa</span></div>
+            <div class="stat-card pct"><strong>${pct}%</strong><span>Kehadiran</span></div>
+          </div>
+          <div class="student-attendance-chart"><canvas id="sd-chart-canvas"></canvas></div>
+          <div class="student-attendance-history">
+            <table>
+              <thead><tr><th>Tanggal</th><th>Masuk</th><th>Keluar</th><th>Status</th><th>Catatan</th></tr></thead>
+              <tbody>
+                ${filtered.map(row => `
+                  <tr>
+                    <td>${esc(String(row.TANGGAL || "").slice(0, 10))}</td>
+                    <td>${esc(String(row.JAM_MASUK || "-").slice(0, 5))}</td>
+                    <td>${esc(String(row.JAM_KELUAR || "-").slice(0, 5))}</td>
+                    <td><span class="student-badge ${String(row.STATUS || "").toLowerCase()}">${esc(row.STATUS || "-")}</span></td>
+                    <td>${esc(row.CATATAN || "-")}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        try {
+          const Chart = await ensureChartJs();
+          if (modal._chart) { try { modal._chart.destroy(); } catch (_) {} }
+          const ctx = qs("#sd-chart-canvas", content).getContext("2d");
+          modal._chart = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+              labels: ["Hadir", "Terlambat", "Izin", "Sakit", "Alpa"],
+              datasets: [{
+                data: [counts.HADIR, counts.TERLAMBAT, counts.IZIN, counts.SAKIT, counts.ALPA],
+                backgroundColor: ["#18794e", "#2a4ea3", "#d4a017", "#c98a2e", "#b4232c"],
+                borderWidth: 2,
+                borderColor: "#fff"
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: "right", labels: { font: { size: 12 } } },
+                tooltip: { callbacks: {
+                  label: ctx => ` ${ctx.label}: ${ctx.parsed} (${Math.round((ctx.parsed / total) * 100)}%)`
+                }}
+              },
+              cutout: "60%"
+            }
+          });
+        } catch (chartErr) {
+          console.warn("Chart gagal dimuat:", chartErr);
+        }
+
+      } catch (error) {
+        content.innerHTML = `<div class="alert error">${esc(error.message || "Gagal memuat absensi.")}</div>`;
+      }
+    }
+
+    qs("#sd-apply", modal).addEventListener("click", loadAttendance);
+    loadAttendance();
+  }
+
+  function defaultStartDate() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  }
+  function defaultEndDate() {
+    const d = new Date();
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`;
+  }
+  
   /* =========================================================
    * SENSEI
    * ========================================================= */
