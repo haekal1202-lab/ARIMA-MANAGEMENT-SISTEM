@@ -7,6 +7,7 @@ window.App = (() => {
     ["sensei", "Sensei", "◎"],
     ["attendance", "Absensi", "✓"],
     ["billing", "Tagihan", "Rp"],
+    ["receipts", "Kwitansi", "▣"],
     ["finance", "Mutasi Keuangan", "↔"],
     ["salary", "Payroll Sensei", "¥"],
     ["reports", "Laporan", "▤"],
@@ -85,18 +86,10 @@ window.App = (() => {
           required: true,
           options: [
             "MAGANG",
-            "TOKUTEI GINOU",
+            "SSW",
+            "ENGINEERING",
             "ENGINEER"
           ]
-        },
-
-        {
-          key: "SSW",
-          label: "SSW",
-          type: "select",
-          required: true,
-          defaultValue: "TIDAK",
-          options: ["YA", "TIDAK"]
         },
 
         {
@@ -333,7 +326,6 @@ window.App = (() => {
           options: [
             "BELAJAR",
             "ASRAMA",
-            "SSW",
             "JOB",
             "LAINNYA"
           ]
@@ -907,16 +899,6 @@ window.App = (() => {
 
     }
 
-    const role = String(currentUser.role || currentUser.ROLE || "").trim().toUpperCase();
-    if (role === "SISWA" || role === "SENSEI") {
-      window.location.replace("attendance.html");
-      return null;
-    }
-    if (role !== "ADMIN") {
-      window.location.replace("login.html");
-      return null;
-    }
-
     user =
       currentUser;
 
@@ -1024,7 +1006,7 @@ window.App = (() => {
       return;
     }
 
-    const adminMenus = ["attendance", "billing", "finance", "salary", "reports", "settings"];
+    const adminMenus = ["attendance", "billing", "receipts", "finance", "salary", "reports", "settings"];
     const visibleMenus = menus.filter(
       menu => !adminMenus.includes(menu[0]) || isAdminUser()
     );
@@ -1359,6 +1341,12 @@ window.App = (() => {
           await renderBilling(
             el
           );
+
+          break;
+
+        case "receipts":
+
+          await renderReceipts(el);
 
           break;
 
@@ -1836,10 +1824,7 @@ window.App = (() => {
 
               {
                 key: "PROGRAM",
-                label: "Program",
-                render: value => /SSW/i.test(String(value || "")) || String(value || "").trim().toUpperCase() === "ENGINEERING"
-                  ? "TOKUTEI GINOU"
-                  : esc(value || "")
+                label: "Program"
               },
 
               {
@@ -2269,11 +2254,11 @@ window.App = (() => {
         : [];
       const studentsWithoutIds = students.filter(row => {
         const id = String(row.ID_SISWA || '').trim();
-        return !id;
+        return !id || /^SISWA\d+$/i.test(id);
       }).length;
       const senseiWithoutIds = sensei.filter(row => {
         const id = String(row.ID_SENSEI || '').trim();
-        return !id;
+        return !id || /^SENSEI\d+$/i.test(id);
       }).length;
       const now = new Date();
       const today = [
@@ -2303,7 +2288,7 @@ window.App = (() => {
               ${studentsWithoutIds ? `${formatNumber(studentsWithoutIds)} siswa` : ""}
               ${studentsWithoutIds && senseiWithoutIds ? " dan " : ""}
               ${senseiWithoutIds ? `${formatNumber(senseiWithoutIds)} sensei` : ""}
-              belum memiliki ID. ID dibuat dari 2 huruf awal nama + 4 angka terakhir WhatsApp; ID yang sudah ada tetap dipertahankan.
+              belum memakai format ID baru. ID dibuat dari 3 huruf awal nama + 4 angka terakhir WhatsApp.
             </span>
             <div class="toolbar">
               ${studentsWithoutIds ? `<button type="button" class="btn btn-small" id="btn-assign-student-ids">Buat ID Siswa</button>` : ""}
@@ -2524,7 +2509,7 @@ window.App = (() => {
       });
 
       qs("#btn-assign-student-ids", el)?.addEventListener("click", async buttonEvent => {
-        if (!window.confirm(`Buat ID untuk ${studentsWithoutIds} siswa yang belum memiliki ID? ID master yang sudah ada tetap dipertahankan.`)) return;
+        if (!window.confirm(`Buat/perbarui ID untuk ${studentsWithoutIds} siswa? ID lama seperti SISWA001 akan diganti. Referensi absensi, tagihan, pembayaran, serta USER ID yang terkait juga akan disesuaikan.`)) return;
         const button = buttonEvent.currentTarget;
         button.disabled = true;
         button.textContent = "Membuat ID...";
@@ -2541,7 +2526,7 @@ window.App = (() => {
       });
 
       qs("#btn-assign-sensei-ids", el)?.addEventListener("click", async buttonEvent => {
-        if (!window.confirm(`Buat ID untuk ${senseiWithoutIds} sensei yang belum memiliki ID? ID master yang sudah ada tetap dipertahankan.`)) return;
+        if (!window.confirm(`Buat/perbarui ID untuk ${senseiWithoutIds} sensei? ID lama seperti SENSEI001 akan diganti. Referensi absensi, payroll, serta USER ID yang terkait juga akan disesuaikan.`)) return;
         const button = buttonEvent.currentTarget;
         button.disabled = true;
         button.textContent = "Membuat ID...";
@@ -2669,7 +2654,7 @@ window.App = (() => {
         const contentWidth = pageWidth - margin * 2;
 
         pdf.setFillColor(248, 249, 251);
-        pdf.rect(0, 0, pageWidth, 48, "F");
+        pdf.rect(0, 0, pageWidth, 52, "F");
         pdf.addImage(logoData, "PNG", margin, 12, 27, 27);
         pdf.setTextColor(34, 34, 38);
         pdf.setFont("helvetica", "bold");
@@ -2679,10 +2664,11 @@ window.App = (() => {
         pdf.setTextColor(112, 112, 118);
         pdf.setFontSize(8.5);
         pdf.text(pdf.splitTextToSize("Jl. Sidoharjo 1, Desa Negara Ratu, Kecamatan Natar, Kabupaten Lampung Selatan", 140), 51, 26);
-        pdf.text("Email: arimapersada@gmail.com", 51, 35);
+        pdf.text("Konfirmasi: 0813-7908-7768 · 0812-8267-4707 · 0823-7512-8230", 51, 36);
+        pdf.text("Email: arimapersada@gmail.com", 51, 42);
         pdf.setDrawColor(215, 25, 32);
         pdf.setLineWidth(1);
-        pdf.line(margin, 48, pageWidth - margin, 48);
+        pdf.line(margin, 52, pageWidth - margin, 52);
 
         pdf.setTextColor(180, 20, 27);
         pdf.setFont("helvetica", "bold");
@@ -2749,7 +2735,7 @@ window.App = (() => {
         pdf.setFontSize(15);
         pdf.text(formatRupiah(invoice.AMOUNT), pageWidth - margin - 7, totalY + 15, { align: "right" });
 
-        let footerY = 232;
+        let footerY = 250;
         if (invoice.NOTES) {
           pdf.setTextColor(112, 112, 118);
           pdf.setFont("helvetica", "normal");
@@ -2760,33 +2746,19 @@ window.App = (() => {
           pdf.text(visibleNoteLines, margin, totalY + 39);
           footerY = Math.max(230, totalY + 45 + visibleNoteLines.length * 3.5);
         }
-        const footerText = "Mohon melakukan pembayaran sebelum tanggal jatuh tempo. Untuk informasi atau kendala pembayaran, silakan hubungi:";
+        const footerText = "Mohon melakukan pembayaran sebelum tanggal jatuh tempo. Apabila terdapat kendala dalam pembayaran atau membutuhkan pembicaraan terkait mekanisme penyelesaian pembayaran dapat menghubungi Pak Suwardi (0813-7908-7768), Sensei Rachmat (0812-8267-4707), Admin LPKS Arima Persada (0823-7512-8230)";
         const footerLines = pdf.splitTextToSize(footerText, contentWidth);
-        const contactLines = [
-          "Pak Suwardi  ·  0813-7908-7768",
-          "Sensei Rachmat  ·  0812-8267-4707",
-          "Admin LPKS Arima Persada  ·  0823-7512-8230"
-        ];
-        const footerHeight = 8 + footerLines.length * 5 + contactLines.length * 5;
-        if (footerY + footerHeight > 287) {
+        const footerHeight = footerLines.length * 4;
+        if (footerY + footerHeight > 289) {
           pdf.addPage();
           footerY = 24;
         }
         pdf.setDrawColor(225, 226, 229);
         pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-        pdf.setTextColor(34, 34, 38);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10);
-        pdf.text("INFORMASI PEMBAYARAN", margin, footerY);
-        pdf.setTextColor(75, 75, 80);
+        pdf.setTextColor(92, 92, 98);
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9.5);
-        pdf.text(footerLines, margin, footerY + 6);
-        const contactY = footerY + 6 + footerLines.length * 5;
-        contactLines.forEach((line, index) => {
-          pdf.setFont("helvetica", index === 2 ? "bold" : "normal");
-          pdf.text(line, margin, contactY + index * 5);
-        });
+        pdf.setFontSize(8);
+        pdf.text(footerLines, margin, footerY);
         const fileId = String(invoice.BILLING_ID || student.ID_SISWA).replace(/[^A-Za-z0-9_-]/g, "-");
         return { pdf, fileName: `tagihan-${fileId}.pdf` };
       }
@@ -2913,6 +2885,60 @@ window.App = (() => {
    * FINANCE
    * =========================================================
    */
+
+  async function renderReceipts(el) {
+    try {
+      const [bRes, pRes, sRes] = await Promise.all([API.billing(), API.payments(), API.students()]);
+      const billings = Array.isArray(bRes?.data) ? bRes.data : [];
+      const payments = Array.isArray(pRes?.data) ? pRes.data : [];
+      const students = Array.isArray(sRes?.data) ? sRes.data : [];
+      const money = v => "Rp " + formatNumber(v);
+      const statusOf = b => String(b.STATUS || "TERTUNGGAK").toUpperCase();
+      el.innerHTML = `${pageHeader("Kwitansi", "Kelola status pembayaran, cetak bukti pembayaran, atau buat kwitansi langsung.", "+ Kwitansi Langsung", "btn-direct-receipt")}
+        <section class="card"><div class="section-head"><h2>Tagihan Siswa</h2><p class="muted">Tagihan yang dibuat di menu Tagihan muncul di sini otomatis.</p></div>
+        ${renderTable(billings, [
+          {key:"BILLING_ID",label:"No. Tagihan"},
+          {key:"ID_SISWA",label:"ID Siswa"},
+          {key:"DESCRIPTION",label:"Keterangan"},
+          {key:"AMOUNT",label:"Nominal",render:v=>money(v)},
+          {key:"DUE_DATE",label:"Jatuh Tempo"},
+          {key:"STATUS",label:"Status",render:v=>`<span class="status-pill">${esc(v||"TERTUNGGAK")}</span>`}
+        ], {emptyText:"Belum ada tagihan."})}</section>
+        <section class="card"><div class="section-head"><h2>Riwayat Pembayaran / Kwitansi</h2></div>
+        ${renderTable(payments.slice().reverse(), [
+          {key:"PAYMENT_ID",label:"ID Pembayaran"}, {key:"BILLING_ID",label:"No. Tagihan"}, {key:"ID_SISWA",label:"ID Siswa"},
+          {key:"PAYMENT_DATE",label:"Tanggal"}, {key:"AMOUNT",label:"Nominal",render:v=>money(v)}, {key:"PAYMENT_METHOD",label:"Metode"},
+          {key:"RECEIPT_NO",label:"No. Kwitansi",render:v=>esc(v||"—")}
+        ], {emptyText:"Belum ada pembayaran."})}</section>
+        <div class="card"><h2>Perbarui status tagihan</h2><form id="receipt-status-form" class="form-grid">
+          <div><label for="receipt-billing">Pilih tagihan</label><select id="receipt-billing" required><option value="">Pilih tagihan…</option>${billings.map(b=>`<option value="${esc(b.BILLING_ID)}">${esc(b.BILLING_ID)} · ${esc(b.ID_SISWA)} · ${esc(b.DESCRIPTION||"")}</option>`).join("")}</select></div>
+          <div><label for="receipt-status">Status pembayaran</label><select id="receipt-status" required><option value="TERTUNGGAK">TERTUNGGAK</option><option value="LUNAS">LUNAS</option><option value="CICILAN">CICILAN</option></select></div>
+          <div class="form-actions"><button class="btn btn-primary" type="submit">Simpan Status</button></div></form></div>`;
+      const directBtn = qs("#btn-direct-receipt", el);
+      directBtn?.addEventListener("click", () => {
+        const modal = document.createElement("div"); modal.className="modal-backdrop";
+        modal.innerHTML=`<div class="modal-card"><div class="modal-header"><h2>Kwitansi Langsung</h2><button type="button" class="btn btn-secondary" data-close>×</button></div>
+        <form id="direct-receipt-form" class="form-grid">
+          <div><label>Siswa</label><select name="ID_SISWA" required><option value="">Pilih siswa</option>${students.map(x=>`<option value="${esc(x.ID_SISWA)}">${esc(x.NAMA)} (${esc(x.ID_SISWA)})</option>`).join("")}</select></div>
+          <div><label>Tanggal</label><input name="PAYMENT_DATE" type="date" value="${new Date().toISOString().slice(0,10)}" required></div>
+          <div><label>Nominal (Rp)</label><input name="AMOUNT" type="number" min="1" required></div>
+          <div><label>Metode</label><select name="PAYMENT_METHOD"><option>CASH</option><option>TRANSFER</option><option>QRIS</option><option>LAINNYA</option></select></div>
+          <div class="form-span-2"><label>Keterangan</label><input name="NOTES" required placeholder="Contoh: Pembayaran biaya belajar"></div>
+          <div class="form-actions"><button class="btn btn-primary" type="submit">Simpan & Cetak</button></div></form></div>`;
+        document.body.appendChild(modal); modal.querySelector("[data-close]").onclick=()=>modal.remove(); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove()});
+        modal.querySelector("form").addEventListener("submit",async e=>{e.preventDefault(); const f=new FormData(e.currentTarget); const id="PAY-"+Date.now(); const receipt="KW-"+new Date().toISOString().slice(0,10).replace(/-/g,"")+"-"+String(Date.now()).slice(-5); const student=students.find(x=>String(x.ID_SISWA)===String(f.get("ID_SISWA"))); const payload={PAYMENT_ID:id,BILLING_ID:"DIRECT-"+id,ID_SISWA:f.get("ID_SISWA"),PAYMENT_DATE:f.get("PAYMENT_DATE"),AMOUNT:Number(f.get("AMOUNT")),PAYMENT_METHOD:f.get("PAYMENT_METHOD"),NOTES:f.get("NOTES"),RECEIPT_NO:receipt,__MODE:"create"}; try{const r=await API.paymentSave(payload); if(r?.success===false)throw new Error(r.message||"Gagal menyimpan pembayaran"); modal.remove(); printReceipt({receipt,student,date:payload.PAYMENT_DATE,amount:payload.AMOUNT,method:payload.PAYMENT_METHOD,notes:payload.NOTES}); await renderReceipts(el);}catch(err){alert("Gagal menyimpan kwitansi: "+err.message)}});
+      });
+      qs("#receipt-status-form",el)?.addEventListener("submit",async e=>{e.preventDefault(); const id=qs("#receipt-billing",el).value; const status=qs("#receipt-status",el).value; const row=billings.find(b=>String(b.BILLING_ID)===id); if(!row)return; try{const r=await API.billingSave({...row,STATUS:status,__MODE:"update"}); if(r?.success===false)throw new Error(r.message||"Status gagal disimpan"); alert("Status tagihan berhasil diperbarui."); await renderReceipts(el);}catch(err){alert("Gagal memperbarui status: "+err.message)}});
+    } catch (err) { renderError(el, err); }
+  }
+
+  function printReceipt(data) {
+    const w=window.open("", "_blank", "width=900,height=700");
+    if(!w){alert("Izinkan pop-up untuk mencetak kwitansi.");return;}
+    w.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Kwitansi ${esc(data.receipt)}</title><style>body{font:14px Arial,sans-serif;padding:40px;color:#111}.receipt{max-width:720px;margin:auto;border:1px solid #ddd;border-left:8px solid #c00;padding:32px}h1{font-size:24px;letter-spacing:3px}table{width:100%;border-collapse:collapse;margin:24px 0}td{padding:12px;border-bottom:1px solid #ddd}.amount{font-size:24px;font-weight:bold;color:#c00;text-align:right}.muted{color:#555}@media print{button{display:none}}</style></head><body><div class="receipt"><h2>LPKS ARIMA PERSADA</h2><p class="muted">Menjembatani Kompetensi, Membuka Gerbang Karier ke Jepang</p><hr><h1>KWITANSI PEMBAYARAN</h1><p>No. Kwitansi: <b>${esc(data.receipt)}</b></p><p>Tanggal: ${esc(data.date)}</p><table><tr><td>Diterima dari</td><td><b>${esc(data.student?.NAMA||"")}</b></td></tr><tr><td>ID Siswa</td><td>${esc(data.student?.ID_SISWA||"")}</td></tr><tr><td>Keterangan</td><td>${esc(data.notes||"Pembayaran")}</td></tr><tr><td>Metode</td><td>${esc(data.method)}</td></tr></table><p class="amount">${moneyText(data.amount)}</p><p>Terbilang: ${esc(numberWordsID(data.amount))} rupiah</p><br><p style="text-align:right">Penerima,</p><br><p style="text-align:right">(________________)</p><button onclick="window.print()">Cetak / Simpan PDF</button></div><script>window.onload=()=>window.print()</script></body></html>`); w.document.close();
+  }
+  function moneyText(n){return "Rp "+new Intl.NumberFormat("id-ID").format(Number(n||0));}
+  function numberWordsID(n){const a=["nol","satu","dua","tiga","empat","lima","enam","tujuh","delapan","sembilan","sepuluh","sebelas"]; n=Math.floor(Math.abs(Number(n)||0)); if(n<12)return a[n]; if(n<20)return numberWordsID(n-10)+" belas"; if(n<100)return numberWordsID(Math.floor(n/10))+" puluh "+(n%10?numberWordsID(n%10):""); if(n<200)return "seratus "+numberWordsID(n-100); if(n<1000)return numberWordsID(Math.floor(n/100))+" ratus "+(n%100?numberWordsID(n%100):""); if(n<2000)return "seribu "+numberWordsID(n-1000); if(n<1000000)return numberWordsID(Math.floor(n/1000))+" ribu "+(n%1000?numberWordsID(n%1000):""); if(n<1000000000)return numberWordsID(Math.floor(n/1000000))+" juta "+(n%1000000?numberWordsID(n%1000000):""); return String(n); }
 
   async function renderFinance(
     el
@@ -3419,7 +3445,7 @@ window.App = (() => {
       const users = Array.isArray(usersResponse?.data) ? usersResponse.data : [];
       const students = Array.isArray(studentsResponse?.data) ? studentsResponse.data : [];
       const sensei = Array.isArray(senseiResponse?.data) ? senseiResponse.data : [];
-      const directories = { students, sensei, users };
+      const directories = { students, sensei };
 
       el.innerHTML = `
         ${pageHeader("Pengaturan", "Informasi sistem dan akun akses pengguna.")}
@@ -3432,7 +3458,7 @@ window.App = (() => {
 
         <section class="section account-management">
           <div class="section-head">
-            <div><h2>Akun Pengguna</h2><p class="muted">ID login siswa/sensei memakai 2 huruf awal nama + 4 angka terakhir WhatsApp; suffix ditambahkan bila ada bentrok.</p></div>
+            <div><h2>Akun Pengguna</h2><p class="muted">ID login siswa/sensei memakai 3 huruf awal nama + 4 angka terakhir WhatsApp; ID master tetap ditautkan.</p></div>
             <div class="toolbar">
               <button type="button" class="btn btn-light" id="btn-generate-user-ids">Generate USER ID</button>
               <button type="button" class="btn btn-primary" id="btn-add-account">+ Tambah Akun</button>
@@ -3520,7 +3546,7 @@ window.App = (() => {
           <div class="form-modal-heading">
             <span class="form-modal-kicker">PENGATURAN AKUN</span>
             <h2>${isReset ? "Reset Password" : "Tambah Akun"}</h2>
-            <p>${isReset ? "Tentukan password baru untuk akun ini." : "ID akun siswa/sensei memakai 2 huruf awal nama dan 4 angka terakhir WhatsApp; suffix ditambahkan bila bentrok."}</p>
+            <p>${isReset ? "Tentukan password baru untuk akun ini." : "ID akun siswa/sensei dibuat dari 3 huruf awal nama dan 4 angka terakhir nomor WhatsApp."}</p>
           </div>
           <button type="button" class="modal-close" id="account-modal-close" aria-label="Tutup">×</button>
         </div>
@@ -3543,7 +3569,7 @@ window.App = (() => {
             <div class="form-group form-group-wide" id="account-linked-id-group">
               <label for="account-linked-id">Pilih ID Master</label>
               <select id="account-linked-id" name="linkedId" required></select>
-              <span class="tiny">ID login memakai 2 huruf awal nama + 4 angka terakhir WhatsApp.</span>
+              <span class="tiny">ID login mengikuti format 3 huruf awal nama + 4 angka terakhir WhatsApp.</span>
             </div>
             <div class="form-group" id="account-admin-id-group">
               <label for="account-admin-id">ID Admin</label>
@@ -3585,17 +3611,10 @@ window.App = (() => {
       const preview = qs("#account-person-preview", modal);
 
       const generatedAccountId = person => {
-        const name = String(person?.NAMA || "").trim().split(/\s+/)
-          .map(part => part.replace(/[^A-Za-z]/g, ""))
-          .find(part => part.length >= 2);
+        const name = String(person?.NAMA || "").trim().match(/[A-Za-z]+/);
         const phone = String(person?.NO_WA || "").replace(/\D/g, "");
-        if (!name || phone.length < 4) return "";
-        const base = name.slice(0, 2).toUpperCase() + phone.slice(-4);
-        const usedIds = new Set((directories.users || []).map(user => String(user.USER_ID || "").trim().toUpperCase()));
-        if (!usedIds.has(base)) return base;
-        let suffix = 2;
-        while (usedIds.has(`${base}-${suffix}`)) suffix += 1;
-        return `${base}-${suffix}`;
+        if (!name || name[0].length < 3 || phone.length < 4) return "";
+        return name[0].slice(0, 3).toUpperCase() + phone.slice(-4);
       };
 
       const populateLinkedIds = () => {
@@ -3739,15 +3758,7 @@ window.App = (() => {
             : type === "salary" && field.key === "PAYMENT_STATUS"
               ? "PENDING"
               : "";
-          const legacyProgram = String(existing?.PROGRAM || "").trim().toUpperCase();
-          const existingValue = field.key === "PROGRAM" && legacyProgram.indexOf("SSW") >= 0
-            ? "TOKUTEI GINOU"
-            : field.key === "PROGRAM" && legacyProgram === "ENGINEERING"
-              ? "TOKUTEI GINOU"
-              : field.key === "SSW" && existing
-                ? existing.SSW || (legacyProgram.indexOf("SSW") >= 0 ? "YA" : "TIDAK")
-                : existing?.[field.key];
-          const rawValue = existingValue ?? options.defaults?.[field.key] ?? field.defaultValue ?? defaultValue;
+          const rawValue = existing?.[field.key] ?? options.defaults?.[field.key] ?? defaultValue;
           const value = field.type === "date"
             ? String(rawValue || "").slice(0, 10)
             : field.type === "month"
