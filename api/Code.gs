@@ -656,6 +656,9 @@ function saveOwnAttendance_(payload, token) {
   if (actorType === 'SENSEI' && (status === 'HADIR' || status === 'TERLAMBAT') && (!start || !end)) {
     return { success: false, message: 'Sensei wajib mengisi jam mengajar mulai dan selesai.' };
   }
+  if (actorType === 'SENSEI' && !String(record.CATATAN || '').trim()) {
+    return { success: false, message: 'Sensei wajib mengisi catatan absensi (mis. materi yang diajarkan).' };
+  }
 
   const sheet = ss_().getSheetByName('ATTENDANCE');
   if (!sheet) return { success: false, message: 'Sheet ATTENDANCE tidak ditemukan.' };
