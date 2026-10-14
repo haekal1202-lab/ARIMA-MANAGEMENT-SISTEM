@@ -178,6 +178,7 @@ window.App = (() => {
         { key: "ID_SENSEI", label: "ID Sensei", type: "text", required: true },
         { key: "PERIOD", label: "Periode", type: "month", required: true },
         { key: "BONUS", label: "Bonus", type: "number", required: false },
+        { key: "TRANSPORT", label: "Transport", type: "number", required: false },
         { key: "DEDUCTION", label: "Potongan", type: "number", required: false },
         { key: "PAYMENT_DATE", label: "Tanggal Pembayaran", type: "date", required: false },
         { key: "PAYMENT_STATUS", label: "Status Pembayaran", type: "select", required: true, options: ["PENDING", "DIBAYAR", "LUNAS"] },
