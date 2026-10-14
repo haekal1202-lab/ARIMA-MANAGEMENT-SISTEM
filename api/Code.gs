@@ -1,13 +1,6 @@
 /**
  * ARIMA MANAGEMENT SYSTEM - FINAL BACKEND
  * Deploy as Google Apps Script Web App.
- *
- * Features:
- * - doGet/doPost JSON API
- * - login with salted HMAC-SHA256 password verification
- * - spreadsheet-backed USERS sheet support
- * - production USERS sheet authentication; no runtime demo fallback
- * - public test wrappers for manual execution in Apps Script editor
  */
 const ARIMA = Object.freeze({
   SPREADSHEET_ID: '1hsfZFAS24iI6w2dQRONgOhg2j7WCa-_OcJRFG9zDKOw',
@@ -204,11 +197,7 @@ function json_(obj) {
 }
 
 function health_() {
-  return {
-    success: true,
-    app: 'ARIMA MANAGEMENT SYSTEM',
-    status: 'online'
-  };
+  return { success: true, app: 'ARIMA MANAGEMENT SYSTEM', status: 'online' };
 }
 
 function logout_() {
@@ -339,16 +328,22 @@ function generateUserIds_() {
   return { success: true, message: message, data: listAccounts_().data };
 }
 
+/**
+ * Buat ID dari 2 huruf awal nama (kata pertama yang >= 2 huruf) + 4 angka terakhir WA.
+ * Contoh: "M Irvan Haekal" + 081278073948 -> IR3948
+ */
 function generatedAccountId_(name, phone) {
-  const namePart = String(name || '').trim().match(/[A-Za-z]+/);
+  const cleaned = String(name || '').trim();
+  const words = cleaned.split(/\s+/).filter(function (w) { return /^[A-Za-z]{2,}/.test(w); });
+  const firstWord = words[0] ? words[0].match(/[A-Za-z]{2,}/)[0] : '';
   const phoneDigits = String(phone || '').replace(/\D/g, '');
-  if (!namePart || namePart[0].length < 2) {
+  if (!firstWord || firstWord.length < 2) {
     return { success: false, message: 'Nama harus memiliki minimal 2 huruf untuk membuat ID akun.' };
   }
   if (phoneDigits.length < 4) {
     return { success: false, message: 'Nomor WhatsApp harus memiliki minimal 4 angka untuk membuat ID akun.' };
   }
-  return { success: true, id: namePart[0].slice(0, 2).toUpperCase() + phoneDigits.slice(-4) };
+  return { success: true, id: firstWord.slice(0, 2).toUpperCase() + phoneDigits.slice(-4) };
 }
 
 function normalizedPersonName_(value) {
@@ -379,7 +374,7 @@ function masterPerson_(role, masterId) {
     return String(item[idIndex] || '').trim().toUpperCase() === String(masterId || '').trim().toUpperCase();
   });
   if (!row) return { success: false, message: 'ID master tersebut belum terdaftar pada data ' + (role === 'SISWA' ? 'siswa.' : 'sensei.') };
-  const phoneIndex = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE']);
+  const phoneIndex = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE', 'WHATSAPP', 'WA', 'HP', 'TELP']);
   return {
     success: true,
     person: {
@@ -401,7 +396,7 @@ function accountMasterPerson_(role, masterId, accountName) {
   const headers = values[0].map(String);
   const idIndex = findColumnIndex_(headers, [role === 'SISWA' ? 'ID_SISWA' : 'ID_SENSEI']);
   const nameIndex = findColumnIndex_(headers, ['NAMA', 'NAME']);
-  const phoneIndex = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE']);
+  const phoneIndex = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE', 'WHATSAPP', 'WA', 'HP', 'TELP']);
   if (idIndex < 0 || nameIndex < 0) return linked;
   const matches = values.slice(1).filter(function (row) {
     return normalizedPersonName_(row[nameIndex]) === normalizedPersonName_(accountName);
@@ -596,8 +591,6 @@ function attendanceForToday_(actorId, actorType) {
     result.ISTIRAHAT_SELESAI = be ? clockLabel_(clockMinutes_(be)) : '';
     result.FOTO_KELAS_URL = get('FOTO_KELAS_URL');
     result.FOTO_ABSENSI_URL = get('FOTO_ABSENSI_URL');
-  }
-  if (actorType === 'SENSEI') {
     const bsMinutes = clockMinutes_(get('ISTIRAHAT_MULAI'));
     const beMinutes = clockMinutes_(get('ISTIRAHAT_SELESAI'));
     const paid = paidTeachingMinutes_(startMinutes, endMinutes, bsMinutes, beMinutes);
@@ -839,10 +832,6 @@ function randomSecret_() {
   return Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid();
 }
 
-/**
- * Secret untuk menandatangani token sesi. Dibuat acak sekali saja dan disimpan
- * di Script Properties; tidak pernah ada di kode sumber.
- */
 function buildTokenSecret_() {
   const props = PropertiesService.getScriptProperties();
   let secret = props.getProperty('ARIMA_TOKEN_SECRET');
@@ -853,11 +842,6 @@ function buildTokenSecret_() {
   return secret;
 }
 
-/**
- * Secret untuk hash password. Deployment lama sudah menyimpan nilainya di
- * ARIMA_AUTH_SECRET sehingga password lama tetap valid. Deployment baru
- * mendapat nilai acak, bukan konstanta dari kode.
- */
 function buildAuthSecret_() {
   const props = PropertiesService.getScriptProperties();
   let secret = props.getProperty('ARIMA_AUTH_SECRET');
@@ -1211,7 +1195,7 @@ function assignMissingMasterIds_(sheetName, idField, role) {
   const headers = values[0].map(function (header) { return String(header || '').trim(); });
   const idIndex = findColumnIndex_(headers, [idField]);
   const nameIndex = findColumnIndex_(headers, ['NAMA', 'NAME']);
-  const phoneIndex = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE']);
+  const phoneIndex = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE', 'WHATSAPP', 'WA', 'HP', 'TELP']);
   if (idIndex < 0 || nameIndex < 0 || phoneIndex < 0) {
     return { success: false, message: 'Kolom ' + idField + ', NAMA, dan NO_WA/NO_HP wajib tersedia pada sheet ' + sheetName + '.' };
   }
@@ -1424,7 +1408,9 @@ function paidTeachingMinutes_(start, end, breakStart, breakEnd) {
   let paidMinutes = endAt - startAt;
 
   // Istirahat dari record (jika ada)
-  if (breakStart !== null && breakEnd !== null && breakStart !== breakEnd) {
+  if (breakStart !== null && breakStart !== undefined &&
+      breakEnd !== null && breakEnd !== undefined &&
+      breakStart !== breakEnd) {
     const bs = breakStart;
     const be = breakEnd > breakStart ? breakEnd : breakEnd + 1440;
     for (let dayStart = Math.floor(startAt / 1440) * 1440; dayStart < endAt; dayStart += 1440) {
@@ -1480,6 +1466,9 @@ function calculateSalaryRecord_(record) {
     return { success: false, message: 'Kolom absensi untuk perhitungan JP belum lengkap.' };
   }
 
+  const bsIdx = findColumnIndex_(headers, ['ISTIRAHAT_MULAI']);
+  const beIdx = findColumnIndex_(headers, ['ISTIRAHAT_SELESAI']);
+
   let meetingCount = 0;
   let totalMinutes = 0;
   let incompleteTimes = 0;
@@ -1490,31 +1479,7 @@ function calculateSalaryRecord_(record) {
     if (periodKey_(row[dateIndex]) !== period) return;
     if (status !== 'HADIR' && status !== 'TERLAMBAT') return;
 
-  if (sheetName === 'ATTENDANCE' && attendanceActorType_(record.ACTOR_TYPE) === 'SENSEI') {
-    const status = String(record.STATUS || '').trim().toUpperCase();
-    if (status === 'HADIR' || status === 'TERLAMBAT') {
-      const start = clockMinutes_(record.JAM_MASUK);
-      const end = clockMinutes_(record.JAM_KELUAR);
-      if (start === null || end === null) {
-        return { success: false, message: 'Absensi hadir sensei wajib memiliki jam mulai dan selesai yang valid.' };
-      }
-      if (start === end) {
-        return { success: false, message: 'Jam mulai dan selesai tidak boleh sama.' };
-      }
-      const bs = clockMinutes_(record.ISTIRAHAT_MULAI);
-      const be = clockMinutes_(record.ISTIRAHAT_SELESAI);
-      if ((bs === null) !== (be === null)) {
-        return { success: false, message: 'Istirahat harus diisi lengkap (mulai dan selesai), atau dikosongkan keduanya.' };
-      }
-      if (bs !== null && be !== null && bs === be) {
-        return { success: false, message: 'Jam istirahat mulai dan selesai tidak boleh sama.' };
-      }
-    }
-  }
-
     meetingCount += 1;
-    const bsIdx = findColumnIndex_(headers, ['ISTIRAHAT_MULAI']);
-    const beIdx = findColumnIndex_(headers, ['ISTIRAHAT_SELESAI']);
     const bs = bsIdx >= 0 ? clockMinutes_(row[bsIdx]) : null;
     const be = beIdx >= 0 ? clockMinutes_(row[beIdx]) : null;
     const paidMinutes = paidTeachingMinutes_(clockMinutes_(row[startIndex]), clockMinutes_(row[endIndex]), bs, be);
@@ -1588,10 +1553,18 @@ function saveSheetRecord_(sheetName, keyField, payload) {
       const start = clockMinutes_(record.JAM_MASUK);
       const end = clockMinutes_(record.JAM_KELUAR);
       if (start === null || end === null) {
-        return { success: false, message: 'Absensi hadir sensei wajib memiliki jam mengajar mulai dan selesai yang valid agar dapat dihitung sebagai payroll.' };
+        return { success: false, message: 'Absensi hadir sensei wajib memiliki jam mulai dan selesai yang valid.' };
       }
       if (start === end) {
-        return { success: false, message: 'Jam mengajar mulai dan selesai sensei tidak boleh sama.' };
+        return { success: false, message: 'Jam mulai dan selesai tidak boleh sama.' };
+      }
+      const bs = clockMinutes_(record.ISTIRAHAT_MULAI);
+      const be = clockMinutes_(record.ISTIRAHAT_SELESAI);
+      if ((bs === null) !== (be === null)) {
+        return { success: false, message: 'Istirahat harus diisi lengkap (mulai dan selesai), atau dikosongkan keduanya.' };
+      }
+      if (bs !== null && be !== null && bs === be) {
+        return { success: false, message: 'Jam istirahat mulai dan selesai tidak boleh sama.' };
       }
     }
   }
@@ -1635,19 +1608,20 @@ function saveSheetRecord_(sheetName, keyField, payload) {
   const row = isUpdate
     ? sh.getRange(rowNumber, 1, 1, headers.length).getValues()[0]
     : new Array(headers.length).fill('');
-    let finalKey = requestedKey || String(row[keyIndex] || '').trim();
+
+  let finalKey = requestedKey || String(row[keyIndex] || '').trim();
   if (!finalKey) {
     // Untuk master siswa/sensei, buat ID format baru: 2 huruf nama + 4 angka WA
     if (sheetName === 'STUDENTS' || sheetName === 'SENSEI') {
       const nameIdx = findColumnIndex_(headers, ['NAMA', 'NAME']);
-      const phoneIdx = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE']);
+      const phoneIdx = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE', 'WHATSAPP', 'WA', 'HP', 'TELP']);
       const nameVal = nameIdx >= 0 ? record[headers[nameIdx]] : '';
       const phoneVal = phoneIdx >= 0 ? record[headers[phoneIdx]] : '';
       const generated = generatedAccountId_(nameVal, phoneVal);
       if (generated.success) {
-        const used = values.slice(1).some(r =>
-          String(r[keyIndex] || '').trim().toUpperCase() === generated.id.toUpperCase()
-        );
+        const used = values.slice(1).some(function (r) {
+          return String(r[keyIndex] || '').trim().toUpperCase() === generated.id.toUpperCase();
+        });
         if (!used) finalKey = generated.id;
       }
     }
@@ -1677,7 +1651,7 @@ function saveSheetRecord_(sheetName, keyField, payload) {
   // Auto-sync PAYMENTS -> FINANCE + update status BILLING
   if (sheetName === 'PAYMENTS') {
     const paymentObj = {};
-    headers.forEach((header, idx) => { paymentObj[header] = row[idx]; });
+    headers.forEach(function (header, idx) { paymentObj[header] = row[idx]; });
     paymentObj.PAYMENT_ID = String(row[keyIndex] || finalKey);
 
     const syncResult = syncPaymentToFinance_(paymentObj);
@@ -1685,7 +1659,6 @@ function saveSheetRecord_(sheetName, keyField, payload) {
       console.warn('Gagal sync pembayaran ke FINANCE:', syncResult.message);
     }
 
-    // Update status BILLING otomatis
     try {
       updateBillingStatusFromPayments_(String(paymentObj.BILLING_ID || '').trim());
     } catch (err) {
@@ -1714,15 +1687,13 @@ function syncPaymentToFinance_(payment) {
   const paymentId = String(payment.PAYMENT_ID || '').trim();
   if (!paymentId) return { success: false, message: 'PAYMENT_ID kosong, tidak dapat sync ke FINANCE.' };
 
-  // Hindari double-count: cek apakah sudah ada FINANCE dengan REFERENCE_NO = PAYMENT_ID
-  const existing = (financeRows.data || []).find(row =>
-    String(row.REFERENCE_NO || '').trim().toUpperCase() === paymentId.toUpperCase()
-  );
+  const existing = (financeRows.data || []).find(function (row) {
+    return String(row.REFERENCE_NO || '').trim().toUpperCase() === paymentId.toUpperCase();
+  });
   if (existing) {
     return { success: true, skipped: true, message: 'Mutasi keuangan untuk pembayaran ini sudah tercatat.' };
   }
 
-  // Ambil info tagihan untuk kategori
   const billingSheet = ss_().getSheetByName('BILLING');
   let billingCategory = '';
   if (billingSheet) {
@@ -1732,9 +1703,9 @@ function syncPaymentToFinance_(payment) {
       const idIdx = findColumnIndex_(headers, ['BILLING_ID']);
       const catIdx = findColumnIndex_(headers, ['CATEGORY']);
       if (idIdx >= 0 && catIdx >= 0) {
-        const found = billingValues.slice(1).find(row =>
-          String(row[idIdx] || '').trim() === String(payment.BILLING_ID || '').trim()
-        );
+        const found = billingValues.slice(1).find(function (row) {
+          return String(row[idIdx] || '').trim() === String(payment.BILLING_ID || '').trim();
+        });
         if (found) billingCategory = String(found[catIdx] || '').trim();
       }
     }
@@ -1777,7 +1748,6 @@ function updateBillingStatusFromPayments_(billingId) {
   const bStatusIdx = findColumnIndex_(bHeaders, ['STATUS']);
   if (bIdIdx < 0 || bStatusIdx < 0) return;
 
-  // Cari baris billing
   let rowNum = 0;
   let totalBill = 0;
   for (let i = 1; i < bValues.length; i += 1) {
@@ -1789,7 +1759,6 @@ function updateBillingStatusFromPayments_(billingId) {
   }
   if (!rowNum) return;
 
-  // Hitung total pembayaran
   const pValues = paymentsSheet.getDataRange().getValues();
   if (pValues.length < 2) return;
   const pHeaders = pValues[0].map(String);
@@ -1804,7 +1773,6 @@ function updateBillingStatusFromPayments_(billingId) {
     }
   }
 
-  // Tentukan status baru
   let newStatus = 'BELUM BAYAR';
   if (totalBill > 0 && totalPaid >= totalBill) newStatus = 'LUNAS';
   else if (totalPaid > 0) newStatus = 'CICILAN';
@@ -1813,7 +1781,7 @@ function updateBillingStatusFromPayments_(billingId) {
 }
 
 /* =========================================================
- * VALIDASI HAPUS TAGIHAN (tolak jika ada pembayaran)
+ * VALIDASI HAPUS TAGIHAN
  * ========================================================= */
 
 function deleteBillingRecord_(payload) {
@@ -1827,9 +1795,9 @@ function deleteBillingRecord_(payload) {
     const headers = values[0].map(String);
     const billingIdx = findColumnIndex_(headers, ['BILLING_ID']);
     if (billingIdx >= 0) {
-      const relatedPayments = values.slice(1).filter(row =>
-        String(row[billingIdx] || '').trim() === billingId
-      );
+      const relatedPayments = values.slice(1).filter(function (row) {
+        return String(row[billingIdx] || '').trim() === billingId;
+      });
       if (relatedPayments.length) {
         return {
           success: false,
@@ -1852,7 +1820,6 @@ function deletePaymentRecord_(payload) {
   const paymentId = String(record.PAYMENT_ID || '').trim();
   if (!paymentId) return { success: false, message: 'PAYMENT_ID wajib diisi.' };
 
-  // Hapus dulu entri FINANCE yang REFERENCE_NO-nya = PAYMENT_ID
   const financeSheet = ss_().getSheetByName('FINANCE');
   if (financeSheet && financeSheet.getLastRow() > 1) {
     const values = financeSheet.getDataRange().getValues();
@@ -1888,13 +1855,13 @@ function emailSalarySlip_(payload) {
   if (salaryValues.length < 2) return { success: false, message: 'Data payroll belum tersedia.' };
   const salaryHeaders = salaryValues[0].map(String);
   const salaryIdIdx = findColumnIndex_(salaryHeaders, ['SALARY_ID']);
-  const salaryRow = salaryValues.slice(1).find(row =>
-    String(row[salaryIdIdx] || '').trim() === salaryId
-  );
+  const salaryRow = salaryValues.slice(1).find(function (row) {
+    return String(row[salaryIdIdx] || '').trim() === salaryId;
+  });
   if (!salaryRow) return { success: false, message: 'Data payroll tidak ditemukan.' };
 
   const salaryObj = {};
-  salaryHeaders.forEach((header, idx) => { salaryObj[header] = salaryRow[idx]; });
+  salaryHeaders.forEach(function (header, idx) { salaryObj[header] = salaryRow[idx]; });
 
   const senseiSheet = ss_().getSheetByName('SENSEI');
   if (!senseiSheet) return { success: false, message: 'Sheet SENSEI tidak ditemukan.' };
@@ -1903,9 +1870,9 @@ function emailSalarySlip_(payload) {
   const senseiIdIdx = findColumnIndex_(senseiHeaders, ['ID_SENSEI']);
   const senseiNameIdx = findColumnIndex_(senseiHeaders, ['NAMA']);
   const senseiEmailIdx = findColumnIndex_(senseiHeaders, ['EMAIL']);
-  const senseiRow = senseiValues.slice(1).find(row =>
-    String(row[senseiIdIdx] || '').trim() === String(salaryObj.ID_SENSEI || '').trim()
-  );
+  const senseiRow = senseiValues.slice(1).find(function (row) {
+    return String(row[senseiIdIdx] || '').trim() === String(salaryObj.ID_SENSEI || '').trim();
+  });
   if (!senseiRow) return { success: false, message: 'Data sensei tidak ditemukan.' };
 
   const senseiName = String(senseiRow[senseiNameIdx] || 'Sensei');
@@ -2049,7 +2016,6 @@ function countActive_(sheetName, statusCol, statusValue) {
 
 function setupInitialAdmin() {
   const result = createInitialAdmin_();
-  // Password acak hanya ditampilkan di log eksekusi ini, tidak disimpan di mana pun.
   Logger.log(JSON.stringify(result));
   return result.created ? { success: true, created: true, message: 'Lihat View > Logs untuk password awal.' } : result;
 }
