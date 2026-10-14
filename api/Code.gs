@@ -1450,27 +1450,12 @@ function clockMinutes_(value) {
 
   const text = String(value || '').trim();
 
-  // ▼ TAMBAHKAN BARIS INI: handle string desimal "0.3333"
+  // Handle string desimal "0.3333"
   if (/^0?\.\d+$/.test(text)) {
     const num = Number(text);
     if (num >= 0 && num < 1) return Math.round(num * 1440);
   }
 
-  if (/^\d{4}-\d{2}-\d{2}T/.test(text)) {
-    const timestamp = new Date(text);
-    if (!Number.isNaN(timestamp.getTime())) {
-      return clockMinutes_(Utilities.formatDate(timestamp, ARIMA.TIMEZONE, 'HH:mm'));
-    }
-  }
-  const match = text.match(/(?:T|^)(\d{1,2}):(\d{2})/);
-  if (!match) return null;
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  return hour <= 23 && minute <= 59 ? hour * 60 + minute : null;
-}
-  if (typeof value === 'number' && value >= 0 && value < 1) return Math.round(value * 1440);
-
-  const text = String(value || '').trim();
   if (/^\d{4}-\d{2}-\d{2}T/.test(text)) {
     const timestamp = new Date(text);
     if (!Number.isNaN(timestamp.getTime())) {
