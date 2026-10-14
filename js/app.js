@@ -7,7 +7,6 @@ window.App = (() => {
     ["sensei", "Sensei", "◎"],
     ["attendance", "Absensi", "✓"],
     ["billing", "Tagihan", "Rp"],
-    ["receipts", "Kwitansi", "▣"],
     ["finance", "Mutasi Keuangan", "↔"],
     ["salary", "Payroll Sensei", "¥"],
     ["reports", "Laporan", "▤"],
@@ -1006,7 +1005,7 @@ window.App = (() => {
       return;
     }
 
-    const adminMenus = ["attendance", "billing", "receipts", "finance", "salary", "reports", "settings"];
+    const adminMenus = ["attendance", "billing", "finance", "salary", "reports", "settings"];
     const visibleMenus = menus.filter(
       menu => !adminMenus.includes(menu[0]) || isAdminUser()
     );
@@ -1341,12 +1340,6 @@ window.App = (() => {
           await renderBilling(
             el
           );
-
-          break;
-
-        case "receipts":
-
-          await renderReceipts(el);
 
           break;
 
@@ -2885,60 +2878,6 @@ window.App = (() => {
    * FINANCE
    * =========================================================
    */
-
-  async function renderReceipts(el) {
-    try {
-      const [bRes, pRes, sRes] = await Promise.all([API.billing(), API.payments(), API.students()]);
-      const billings = Array.isArray(bRes?.data) ? bRes.data : [];
-      const payments = Array.isArray(pRes?.data) ? pRes.data : [];
-      const students = Array.isArray(sRes?.data) ? sRes.data : [];
-      const money = v => "Rp " + formatNumber(v);
-      const statusOf = b => String(b.STATUS || "TERTUNGGAK").toUpperCase();
-      el.innerHTML = `${pageHeader("Kwitansi", "Kelola status pembayaran, cetak bukti pembayaran, atau buat kwitansi langsung.", "+ Kwitansi Langsung", "btn-direct-receipt")}
-        <section class="card"><div class="section-head"><h2>Tagihan Siswa</h2><p class="muted">Tagihan yang dibuat di menu Tagihan muncul di sini otomatis.</p></div>
-        ${renderTable(billings, [
-          {key:"BILLING_ID",label:"No. Tagihan"},
-          {key:"ID_SISWA",label:"ID Siswa"},
-          {key:"DESCRIPTION",label:"Keterangan"},
-          {key:"AMOUNT",label:"Nominal",render:v=>money(v)},
-          {key:"DUE_DATE",label:"Jatuh Tempo"},
-          {key:"STATUS",label:"Status",render:v=>`<span class="status-pill">${esc(v||"TERTUNGGAK")}</span>`}
-        ], {emptyText:"Belum ada tagihan."})}</section>
-        <section class="card"><div class="section-head"><h2>Riwayat Pembayaran / Kwitansi</h2></div>
-        ${renderTable(payments.slice().reverse(), [
-          {key:"PAYMENT_ID",label:"ID Pembayaran"}, {key:"BILLING_ID",label:"No. Tagihan"}, {key:"ID_SISWA",label:"ID Siswa"},
-          {key:"PAYMENT_DATE",label:"Tanggal"}, {key:"AMOUNT",label:"Nominal",render:v=>money(v)}, {key:"PAYMENT_METHOD",label:"Metode"},
-          {key:"RECEIPT_NO",label:"No. Kwitansi",render:v=>esc(v||"—")}
-        ], {emptyText:"Belum ada pembayaran."})}</section>
-        <div class="card"><h2>Perbarui status tagihan</h2><form id="receipt-status-form" class="form-grid">
-          <div><label for="receipt-billing">Pilih tagihan</label><select id="receipt-billing" required><option value="">Pilih tagihan…</option>${billings.map(b=>`<option value="${esc(b.BILLING_ID)}">${esc(b.BILLING_ID)} · ${esc(b.ID_SISWA)} · ${esc(b.DESCRIPTION||"")}</option>`).join("")}</select></div>
-          <div><label for="receipt-status">Status pembayaran</label><select id="receipt-status" required><option value="TERTUNGGAK">TERTUNGGAK</option><option value="LUNAS">LUNAS</option><option value="CICILAN">CICILAN</option></select></div>
-          <div class="form-actions"><button class="btn btn-primary" type="submit">Simpan Status</button></div></form></div>`;
-      const directBtn = qs("#btn-direct-receipt", el);
-      directBtn?.addEventListener("click", () => {
-        const modal = document.createElement("div"); modal.className="modal-backdrop";
-        modal.innerHTML=`<div class="modal-card"><div class="modal-header"><h2>Kwitansi Langsung</h2><button type="button" class="btn btn-secondary" data-close>×</button></div>
-        <form id="direct-receipt-form" class="form-grid">
-          <div><label>Siswa</label><select name="ID_SISWA" required><option value="">Pilih siswa</option>${students.map(x=>`<option value="${esc(x.ID_SISWA)}">${esc(x.NAMA)} (${esc(x.ID_SISWA)})</option>`).join("")}</select></div>
-          <div><label>Tanggal</label><input name="PAYMENT_DATE" type="date" value="${new Date().toISOString().slice(0,10)}" required></div>
-          <div><label>Nominal (Rp)</label><input name="AMOUNT" type="number" min="1" required></div>
-          <div><label>Metode</label><select name="PAYMENT_METHOD"><option>CASH</option><option>TRANSFER</option><option>QRIS</option><option>LAINNYA</option></select></div>
-          <div class="form-span-2"><label>Keterangan</label><input name="NOTES" required placeholder="Contoh: Pembayaran biaya belajar"></div>
-          <div class="form-actions"><button class="btn btn-primary" type="submit">Simpan & Cetak</button></div></form></div>`;
-        document.body.appendChild(modal); modal.querySelector("[data-close]").onclick=()=>modal.remove(); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove()});
-        modal.querySelector("form").addEventListener("submit",async e=>{e.preventDefault(); const f=new FormData(e.currentTarget); const id="PAY-"+Date.now(); const receipt="KW-"+new Date().toISOString().slice(0,10).replace(/-/g,"")+"-"+String(Date.now()).slice(-5); const student=students.find(x=>String(x.ID_SISWA)===String(f.get("ID_SISWA"))); const payload={PAYMENT_ID:id,BILLING_ID:"DIRECT-"+id,ID_SISWA:f.get("ID_SISWA"),PAYMENT_DATE:f.get("PAYMENT_DATE"),AMOUNT:Number(f.get("AMOUNT")),PAYMENT_METHOD:f.get("PAYMENT_METHOD"),NOTES:f.get("NOTES"),RECEIPT_NO:receipt,__MODE:"create"}; try{const r=await API.paymentSave(payload); if(r?.success===false)throw new Error(r.message||"Gagal menyimpan pembayaran"); modal.remove(); printReceipt({receipt,student,date:payload.PAYMENT_DATE,amount:payload.AMOUNT,method:payload.PAYMENT_METHOD,notes:payload.NOTES}); await renderReceipts(el);}catch(err){alert("Gagal menyimpan kwitansi: "+err.message)}});
-      });
-      qs("#receipt-status-form",el)?.addEventListener("submit",async e=>{e.preventDefault(); const id=qs("#receipt-billing",el).value; const status=qs("#receipt-status",el).value; const row=billings.find(b=>String(b.BILLING_ID)===id); if(!row)return; try{const r=await API.billingSave({...row,STATUS:status,__MODE:"update"}); if(r?.success===false)throw new Error(r.message||"Status gagal disimpan"); alert("Status tagihan berhasil diperbarui."); await renderReceipts(el);}catch(err){alert("Gagal memperbarui status: "+err.message)}});
-    } catch (err) { renderError(el, err); }
-  }
-
-  function printReceipt(data) {
-    const w=window.open("", "_blank", "width=900,height=700");
-    if(!w){alert("Izinkan pop-up untuk mencetak kwitansi.");return;}
-    w.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Kwitansi ${esc(data.receipt)}</title><style>body{font:14px Arial,sans-serif;padding:40px;color:#111}.receipt{max-width:720px;margin:auto;border:1px solid #ddd;border-left:8px solid #c00;padding:32px}h1{font-size:24px;letter-spacing:3px}table{width:100%;border-collapse:collapse;margin:24px 0}td{padding:12px;border-bottom:1px solid #ddd}.amount{font-size:24px;font-weight:bold;color:#c00;text-align:right}.muted{color:#555}@media print{button{display:none}}</style></head><body><div class="receipt"><h2>LPKS ARIMA PERSADA</h2><p class="muted">Menjembatani Kompetensi, Membuka Gerbang Karier ke Jepang</p><hr><h1>KWITANSI PEMBAYARAN</h1><p>No. Kwitansi: <b>${esc(data.receipt)}</b></p><p>Tanggal: ${esc(data.date)}</p><table><tr><td>Diterima dari</td><td><b>${esc(data.student?.NAMA||"")}</b></td></tr><tr><td>ID Siswa</td><td>${esc(data.student?.ID_SISWA||"")}</td></tr><tr><td>Keterangan</td><td>${esc(data.notes||"Pembayaran")}</td></tr><tr><td>Metode</td><td>${esc(data.method)}</td></tr></table><p class="amount">${moneyText(data.amount)}</p><p>Terbilang: ${esc(numberWordsID(data.amount))} rupiah</p><br><p style="text-align:right">Penerima,</p><br><p style="text-align:right">(________________)</p><button onclick="window.print()">Cetak / Simpan PDF</button></div><script>window.onload=()=>window.print()</script></body></html>`); w.document.close();
-  }
-  function moneyText(n){return "Rp "+new Intl.NumberFormat("id-ID").format(Number(n||0));}
-  function numberWordsID(n){const a=["nol","satu","dua","tiga","empat","lima","enam","tujuh","delapan","sembilan","sepuluh","sebelas"]; n=Math.floor(Math.abs(Number(n)||0)); if(n<12)return a[n]; if(n<20)return numberWordsID(n-10)+" belas"; if(n<100)return numberWordsID(Math.floor(n/10))+" puluh "+(n%10?numberWordsID(n%10):""); if(n<200)return "seratus "+numberWordsID(n-100); if(n<1000)return numberWordsID(Math.floor(n/100))+" ratus "+(n%100?numberWordsID(n%100):""); if(n<2000)return "seribu "+numberWordsID(n-1000); if(n<1000000)return numberWordsID(Math.floor(n/1000))+" ribu "+(n%1000?numberWordsID(n%1000):""); if(n<1000000000)return numberWordsID(Math.floor(n/1000000))+" juta "+(n%1000000?numberWordsID(n%1000000):""); return String(n); }
 
   async function renderFinance(
     el
