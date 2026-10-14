@@ -243,8 +243,8 @@
               </div>
             ` : ""}
 
-            <label for="attendance-notes">Catatan (opsional)</label>
-            <textarea id="attendance-notes" name="CATATAN" rows="3">${escapeHtml(todayLog.CATATAN || "")}</textarea>
+            <label for="attendance-notes">Catatan ${isSensei ? "(wajib)" : "(opsional)"}</label>
+            <textarea id="attendance-notes" name="CATATAN" rows="3" ${isSensei ? "required" : ""}>${escapeHtml(todayLog.CATATAN || "")}</textarea>
             <div class="attendance-error hidden" id="attendance-error" role="alert"></div>
             <button class="btn btn-primary attendance-submit" id="attendance-submit" type="submit">${saved ? "Simpan Perubahan" : "Simpan Absensi"}</button>
           </form>
@@ -380,6 +380,10 @@
           payload.FOTO_KELAS_URL = formData.get("FOTO_KELAS_URL") || "";
           payload.FOTO_ABSENSI_URL = formData.get("FOTO_ABSENSI_URL") || "";
         }
+        if (isSensei && !String(payload.CATATAN || "").trim()) {
+          throw new Error("Sensei wajib mengisi catatan absensi (mis. materi yang diajarkan).");
+        }
+        
         const result = await window.API.selfAttendance(payload);
         if (!result?.success) throw new Error(result?.message || "Absensi gagal disimpan.");
         justSaved = true;
