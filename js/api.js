@@ -125,6 +125,10 @@ window.API = (() => {
     return call("sensei", payload);
   }
 
+  async function fileUpload(payload) {
+    return call("fileUpload", payload);
+  }
+  
   async function attendance(payload = {}) {
     return call("attendance", payload);
   }
