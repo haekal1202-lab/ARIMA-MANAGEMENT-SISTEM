@@ -511,7 +511,14 @@ window.ArimaPdf = (() => {
     y += 40;
 
     // Cari nama penerima: dari Kuitansi, atau kalau kosong ambil dari Tagihan
-    const penerimaName = payment.REFERENCE_NO || (billing && billing.PENERIMA) || "-";
+    let penerimaName = "-";
+    if (payment.REFERENCE_NO && String(payment.REFERENCE_NO).trim() !== "") {
+      penerimaName = String(payment.REFERENCE_NO).trim();
+    } else if (billing && billing.PENERIMA && String(billing.PENERIMA).trim() !== "") {
+      penerimaName = String(billing.PENERIMA).trim();
+    } else {
+      penerimaName = "Admin LPKS Arima Persada";
+    }
 
     y = drawItemsTable(pdf, MARGIN, y, inner,
       ["Keterangan", "Metode", "Penerima", "Jumlah"],
