@@ -704,9 +704,10 @@ window.App = (() => {
 
       async function downloadReceipt(payment) {
         const student = studentsMap.get(String(payment.ID_SISWA||"").trim()) || {};
-        // Cari data billing yang sesuai
-        const billing = billingRows.find(b => String(b.BILLING_ID) === String(payment.BILLING_ID)) || {};
-        // Kirim data billing ke parameter ke-3
+        // Cari data billing dengan ID yang sama
+        const billing = billingRows.find(b => String(b.BILLING_ID).trim() === String(payment.BILLING_ID).trim()) || {};
+        
+        // Kirim 3 parameter
         const { pdf, fileName } = await window.ArimaPdf.buildReceipt(payment, student, billing);
         pdf.save(fileName);
       }
