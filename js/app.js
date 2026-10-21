@@ -664,11 +664,15 @@ window.App = (() => {
   async function renderReceipts(el) {
     if (!isAdminUser()) { el.innerHTML = `<div class="card"><h2>Akses Ditolak</h2></div>`; return; }
     try {
-      const [pR, sR] = await Promise.all([API.payments(), API.students()]);
+      const [pR, sR, bR] = await Promise.all([API.payments(), API.students(), API.billing()]);
       if (pR?.success === false) throw new Error(pR.message);
       if (sR?.success === false) throw new Error(sR.message);
+      if (bR?.success === false) throw new Error(bR.message);
+
       const studentsMap = new Map((Array.isArray(sR?.data) ? sR.data : []).map(r => [String(r.ID_SISWA||"").trim(), r]));
+      const billingRows = Array.isArray(bR?.data) ? bR.data : [];
       const payments = (Array.isArray(pR?.data) ? pR.data : []).slice().sort((a,b) => String(b.PAYMENT_DATE||"").localeCompare(String(a.PAYMENT_DATE||"")));
+      
       const dateText = v => { const t = String(v||""); return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0,10) : t; };
       const nameOf = r => studentsMap.get(String(r.ID_SISWA||"").trim())?.NAMA || "-";
 
@@ -690,6 +694,7 @@ window.App = (() => {
             <td><div class="receipt-actions">
               <button type="button" class="btn btn-primary" data-receipt-pdf="${esc(r.PAYMENT_ID)}">Cetak PDF</button>
               <button type="button" class="btn btn-light" data-receipt-wa="${esc(r.PAYMENT_ID)}">WhatsApp</button>
+              <button type="button" class="btn btn-light" data-receipt-edit="${esc(r.PAYMENT_ID)}">Edit</button>
               <button type="button" class="btn btn-danger" data-receipt-delete="${esc(r.PAYMENT_ID)}">Hapus</button>
             </div></td>
           </tr>`).join("")}</tbody></table></div>`;
@@ -711,22 +716,42 @@ window.App = (() => {
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
       }
       listRoot.addEventListener("click", async e => {
-        const pb = e.target.closest("[data-receipt-pdf]"), wb = e.target.closest("[data-receipt-wa]"), db = e.target.closest("[data-receipt-delete]");
-        const b = pb || wb || db; if (!b) return;
-        const id = b.dataset.receiptPdf || b.dataset.receiptWa || b.dataset.receiptDelete;
-        const payment = payments.find(r => String(r.PAYMENT_ID) === id); if (!payment) return;
+        const pb = e.target.closest("[data-receipt-pdf]");
+        const wb = e.target.closest("[data-receipt-wa]");
+        const db = e.target.closest("[data-receipt-delete]");
+        const eb = e.target.closest("[data-receipt-edit]"); // Tangkap tombol Edit
+        const b = pb || wb || db || eb; 
+        
+        if (!b) return;
+        const id = b.dataset.receiptPdf || b.dataset.receiptWa || b.dataset.receiptDelete || b.dataset.receiptEdit;
+        const payment = payments.find(r => String(r.PAYMENT_ID) === id); 
+        if (!payment) return;
+        
         try {
-          if (db) {
+          if (eb) {
+            // Buka form edit pembayaran
+            openFormModal("payments", payment, {
+              studentRows: Array.from(studentsMap.values()),
+              billingRows: billingRows
+            });
+          } else if (db) {
             if (!confirm("Hapus pembayaran ini? Mutasi keuangan terkait juga akan dihapus.")) return;
             b.disabled = true;
             const res = await API.deleteRecord("payments", { PAYMENT_ID: id, __ROW_NUMBER: payment.__ROW_NUMBER });
             if (res?.success === false) throw new Error(res.message);
             showToast(res?.message || "Dihapus.");
             await renderReceipts(el);
-          } else if (pb) { b.disabled = true; await downloadReceipt(payment); }
-          else { sendWA(payment); }
-        } catch (err) { showToast(err.message || "Gagal.", "error"); }
-        finally { b.disabled = false; }
+          } else if (pb) { 
+            b.disabled = true; 
+            await downloadReceipt(payment); 
+          } else { 
+            sendWA(payment); 
+          }
+        } catch (err) { 
+          showToast(err.message || "Gagal.", "error"); 
+        } finally { 
+          b.disabled = false; 
+        }
       });
     } catch (e) { renderError(el, e); }
   }
