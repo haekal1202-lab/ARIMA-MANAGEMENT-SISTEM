@@ -2189,3 +2189,36 @@ function testSpreadsheetConnection() {
   Logger.log(JSON.stringify(result));
   return result;
 }
+
+// Di WRITE_ACTIONS_:
+'attendancePhotoUpload', 'fileUpload'
+
+// Di route_():
+case 'fileUpload':
+  const fileAccessError = roleAccessError_(token, ['ADMIN']);
+  if (fileAccessError) return fileAccessError;
+  return uploadFile_(p);
+
+// Tambah fungsi:
+function uploadFile_(payload) {
+  const data = payload && typeof payload === 'object' ? payload : {};
+  const base64 = String(data.base64 || '').trim();
+  const mimeType = String(data.mimeType || 'application/octet-stream');
+  const fileName = String(data.fileName || 'file').replace(/[^A-Za-z0-9_.-]/g, '_');
+  if (!base64) return { success: false, message: 'Data file kosong.' };
+  try {
+    const folderName = 'ARIMA_STUDENT_FILES';
+    let folder;
+    const found = DriveApp.getFoldersByName(folderName);
+    folder = found.hasNext() ? found.next() : DriveApp.createFolder(folderName);
+    const timestamp = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyyMMdd-HHmmss');
+    const fullName = timestamp + '_' + fileName;
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64), mimeType, fullName);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    const url = 'https://drive.google.com/uc?export=view&id=' + file.getId();
+    return { success: true, message: 'File diunggah.', data: { url: url, fileId: file.getId(), fileName: fullName } };
+  } catch (err) {
+    return { success: false, message: 'Gagal unggah: ' + (err && err.message ? err.message : err) };
+  }
+}
