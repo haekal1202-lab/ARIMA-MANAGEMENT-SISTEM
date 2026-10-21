@@ -332,10 +332,6 @@ function generateUserIds_() {
   return { success: true, message: message, data: listAccounts_().data };
 }
 
-/**
- * Buat ID dari 2 huruf awal nama (kata pertama yang >= 2 huruf) + 4 angka terakhir WA.
- * Contoh: "M Irvan Haekal" + 081278073948 -> IR3948
- */
 function generatedAccountId_(name, phone) {
   const cleaned = String(name || '').trim();
   const words = cleaned.split(/\s+/).filter(function (w) { return /^[A-Za-z]{2,}/.test(w); });
@@ -423,18 +419,12 @@ function accountMasterPerson_(role, masterId, accountName) {
   };
 }
 
-/**
- * Upload foto absensi. Nama file: {ID}_{TANGGAL}_{TYPE}_{timestamp}.jpg
- * Contoh: IR3948_2026-10-14_KELAS_081523.jpg
- * Disimpan di subfolder per bulan: ARIMA_ATTENDANCE_PHOTOS/2026-10/
- */
 function uploadAttendancePhoto_(payload) {
   const data = payload && typeof payload === 'object' ? payload : {};
   const type = String(data.type || 'PHOTO').toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
   const base64 = String(data.base64 || '').trim();
   const mimeType = String(data.mimeType || 'image/jpeg');
 
-  // Ambil ID & tanggal dari payload
   const actorId = String(data.actorId || '').trim().replace(/[^A-Za-z0-9_-]/g, '_') || 'UNKNOWN';
   const tanggal = String(data.tanggal || '').trim().slice(0, 10).replace(/[^0-9-]/g, '') ||
     Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyy-MM-dd');
@@ -447,14 +437,12 @@ function uploadAttendancePhoto_(payload) {
     const found = DriveApp.getFoldersByName(folderName);
     folder = found.hasNext() ? found.next() : DriveApp.createFolder(folderName);
 
-    // Subfolder per bulan: YYYY-MM
     const monthKey = tanggal.slice(0, 7);
     let monthFolder;
     const monthSearch = folder.getFoldersByName(monthKey);
     monthFolder = monthSearch.hasNext() ? monthSearch.next() : folder.createFolder(monthKey);
 
     const timestamp = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'HHmmss');
-    // Format: IR3948_2026-10-14_KELAS_081523.jpg
     const fullName = actorId + '_' + tanggal + '_' + type + '_' + timestamp + '.jpg';
 
     const blob = Utilities.newBlob(Utilities.base64Decode(base64), mimeType, fullName);
@@ -465,6 +453,38 @@ function uploadAttendancePhoto_(payload) {
     return { success: true, message: 'Foto berhasil diunggah.', data: { url: url, fileId: file.getId(), fileName: fullName } };
   } catch (err) {
     return { success: false, message: 'Gagal mengunggah foto: ' + (err && err.message ? err.message : err) };
+  }
+}
+
+function uploadFile_(payload) {
+  const data = payload && typeof payload === 'object' ? payload : {};
+  const base64 = String(data.base64 || '').trim();
+  const mimeType = String(data.mimeType || 'application/octet-stream');
+  const fileName = String(data.fileName || 'file').replace(/[^A-Za-z0-9_.-]/g, '_');
+  
+  if (!base64) return { success: false, message: 'Data file kosong.' };
+
+  try {
+    const folderName = 'ARIMA_STUDENT_FILES';
+    let folder;
+    const found = DriveApp.getFoldersByName(folderName);
+    folder = found.hasNext() ? found.next() : DriveApp.createFolder(folderName);
+
+    const timestamp = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyyMMdd-HHmmss');
+    const fullName = timestamp + '_' + fileName;
+
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64), mimeType, fullName);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    const url = 'https://drive.google.com/uc?export=view&id=' + file.getId();
+    return { 
+      success: true, 
+      message: 'File berhasil diunggah.', 
+      data: { url: url, fileId: file.getId(), fileName: fullName } 
+    };
+  } catch (err) {
+    return { success: false, message: 'Gagal mengunggah file: ' + (err && err.message ? err.message : err) };
   }
 }
 
@@ -669,7 +689,6 @@ function saveOwnAttendance_(payload, token) {
   const values = sheet.getDataRange().getValues();
   const headers = values[0].map(String);
 
-  // Auto-create kolom baru jika belum ada
   if (ensureAttendanceColumns_(sheet, headers).length) {
     values.length = 0;
     const newValues = sheet.getDataRange().getValues();
@@ -696,7 +715,6 @@ function saveOwnAttendance_(payload, token) {
     }
   }
 
-  // Baca jam dari existing row dengan parser yang benar (handle Date object & number)
   const existingStartMinutes = existing ? clockMinutes_(existing.row[startIndex]) : null;
   const existingEndMinutes = existing ? clockMinutes_(existing.row[endIndex]) : null;
 
@@ -706,12 +724,8 @@ function saveOwnAttendance_(payload, token) {
     SESSION_ID: '',
     CLASS_ID: '',
     TANGGAL: today,
-    JAM_MASUK: existingStartMinutes !== null
-      ? clockLabel_(existingStartMinutes)
-      : start,
-    JAM_KELUAR: end
-      ? end
-      : (existingEndMinutes !== null ? clockLabel_(existingEndMinutes) : ''),
+    JAM_MASUK: existingStartMinutes !== null ? clockLabel_(existingStartMinutes) : start,
+    JAM_KELUAR: end ? end : (existingEndMinutes !== null ? clockLabel_(existingEndMinutes) : ''),
     STATUS: status,
     CATATAN: String(record.CATATAN || '')
   };
@@ -1457,7 +1471,6 @@ function clockMinutes_(value) {
 
   const text = String(value || '').trim();
 
-  // Handle string desimal "0.3333"
   if (/^0?\.\d+$/.test(text)) {
     const num = Number(text);
     if (num >= 0 && num < 1) return Math.round(num * 1440);
@@ -1651,7 +1664,6 @@ function saveSheetRecord_(sheetName, keyField, payload) {
     }
   }
 
-  // Validasi absensi sensei (jam + istirahat)
   if (sheetName === 'ATTENDANCE' && attendanceActorType_(record.ACTOR_TYPE) === 'SENSEI') {
     const status = String(record.STATUS || '').trim().toUpperCase();
     if (status === 'HADIR' || status === 'TERLAMBAT') {
@@ -1664,7 +1676,6 @@ function saveSheetRecord_(sheetName, keyField, payload) {
         return { success: false, message: 'Jam mulai dan selesai tidak boleh sama.' };
       }
 
-      // Validasi istirahat (dari ISTIRAHAT_JSON atau fallback single)
       let breaksToValidate = [];
       if (record.ISTIRAHAT_JSON) {
         try { breaksToValidate = JSON.parse(record.ISTIRAHAT_JSON); } catch (e) { breaksToValidate = []; }
@@ -1732,7 +1743,6 @@ function saveSheetRecord_(sheetName, keyField, payload) {
 
   let finalKey = requestedKey || String(row[keyIndex] || '').trim();
   if (!finalKey) {
-    // Untuk master siswa/sensei, buat ID format baru: 2 huruf nama + 4 angka WA
     if (sheetName === 'STUDENTS' || sheetName === 'SENSEI') {
       const nameIdx = findColumnIndex_(headers, ['NAMA', 'NAME']);
       const phoneIdx = findColumnIndex_(headers, ['NO_WA', 'NO_HP', 'PHONE', 'WHATSAPP', 'WA', 'HP', 'TELP']);
@@ -1769,7 +1779,6 @@ function saveSheetRecord_(sheetName, keyField, payload) {
     rowNumber = sh.getLastRow();
   }
 
-  // Auto-sync PAYMENTS -> FINANCE + update status BILLING
   if (sheetName === 'PAYMENTS') {
     const paymentObj = {};
     headers.forEach(function (header, idx) { paymentObj[header] = row[idx]; });
@@ -1793,46 +1802,6 @@ function saveSheetRecord_(sheetName, keyField, payload) {
     data: { [keyField]: row[keyIndex], __ROW_NUMBER: rowNumber }
   };
 }
-
-/**
- * Upload file generic (CV, Foto Siswa). Simpan di Drive.
- * Nama file: {timestamp}_{namafile_asli}
- */
-function uploadFile_(payload) {
-  const data = payload && typeof payload === 'object' ? payload : {};
-  const base64 = String(data.base64 || '').trim();
-  const mimeType = String(data.mimeType || 'application/octet-stream');
-  const fileName = String(data.fileName || 'file').replace(/[^A-Za-z0-9_.-]/g, '_');
-  
-  if (!base64) return { success: false, message: 'Data file kosong.' };
-
-  try {
-    const folderName = 'ARIMA_STUDENT_FILES';
-    let folder;
-    const found = DriveApp.getFoldersByName(folderName);
-    folder = found.hasNext() ? found.next() : DriveApp.createFolder(folderName);
-
-    const timestamp = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyyMMdd-HHmmss');
-    const fullName = timestamp + '_' + fileName;
-
-    const blob = Utilities.newBlob(Utilities.base64Decode(base64), mimeType, fullName);
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    const url = 'https://drive.google.com/uc?export=view&id=' + file.getId();
-    return { 
-      success: true, 
-      message: 'File berhasil diunggah.', 
-      data: { url: url, fileId: file.getId(), fileName: fullName } 
-    };
-  } catch (err) {
-    return { success: false, message: 'Gagal mengunggah file: ' + (err && err.message ? err.message : err) };
-  }
-}
-
-/* =========================================================
- * AUTO-SYNC PEMBAYARAN KE FINANCE
- * ========================================================= */
 
 function syncPaymentToFinance_(payment) {
   const sheetResult = financeSheet_();
@@ -1887,10 +1856,6 @@ function syncPaymentToFinance_(payment) {
   return saveSheetRecord_('FINANCE', 'TRANSACTION_ID', financeRecord);
 }
 
-/* =========================================================
- * AUTO-UPDATE STATUS BILLING SETELAH PEMBAYARAN
- * ========================================================= */
-
 function updateBillingStatusFromPayments_(billingId) {
   if (!billingId) return;
   const billingSheet = ss_().getSheetByName('BILLING');
@@ -1937,10 +1902,6 @@ function updateBillingStatusFromPayments_(billingId) {
   billingSheet.getRange(rowNum, bStatusIdx + 1).setValue(newStatus);
 }
 
-/* =========================================================
- * VALIDASI HAPUS TAGIHAN
- * ========================================================= */
-
 function deleteBillingRecord_(payload) {
   const record = payload && typeof payload === 'object' ? payload : {};
   const billingId = String(record.BILLING_ID || '').trim();
@@ -1968,10 +1929,6 @@ function deleteBillingRecord_(payload) {
   return deleteSheetRecord_('BILLING', 'BILLING_ID', payload);
 }
 
-/* =========================================================
- * HAPUS PEMBAYARAN + HAPUS FINANCE TERKAIT
- * ========================================================= */
-
 function deletePaymentRecord_(payload) {
   const record = payload && typeof payload === 'object' ? payload : {};
   const paymentId = String(record.PAYMENT_ID || '').trim();
@@ -1993,10 +1950,6 @@ function deletePaymentRecord_(payload) {
 
   return deleteSheetRecord_('PAYMENTS', 'PAYMENT_ID', payload);
 }
-
-/* =========================================================
- * KIRIM SLIP GAJI SENSEI VIA EMAIL
- * ========================================================= */
 
 function emailSalarySlip_(payload) {
   const record = payload && typeof payload === 'object' ? payload : {};
@@ -2188,37 +2141,4 @@ function testSpreadsheetConnection() {
   };
   Logger.log(JSON.stringify(result));
   return result;
-}
-
-// Di WRITE_ACTIONS_:
-'attendancePhotoUpload', 'fileUpload'
-
-// Di route_():
-case 'fileUpload':
-  const fileAccessError = roleAccessError_(token, ['ADMIN']);
-  if (fileAccessError) return fileAccessError;
-  return uploadFile_(p);
-
-// Tambah fungsi:
-function uploadFile_(payload) {
-  const data = payload && typeof payload === 'object' ? payload : {};
-  const base64 = String(data.base64 || '').trim();
-  const mimeType = String(data.mimeType || 'application/octet-stream');
-  const fileName = String(data.fileName || 'file').replace(/[^A-Za-z0-9_.-]/g, '_');
-  if (!base64) return { success: false, message: 'Data file kosong.' };
-  try {
-    const folderName = 'ARIMA_STUDENT_FILES';
-    let folder;
-    const found = DriveApp.getFoldersByName(folderName);
-    folder = found.hasNext() ? found.next() : DriveApp.createFolder(folderName);
-    const timestamp = Utilities.formatDate(new Date(), ARIMA.TIMEZONE, 'yyyyMMdd-HHmmss');
-    const fullName = timestamp + '_' + fileName;
-    const blob = Utilities.newBlob(Utilities.base64Decode(base64), mimeType, fullName);
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    const url = 'https://drive.google.com/uc?export=view&id=' + file.getId();
-    return { success: true, message: 'File diunggah.', data: { url: url, fileId: file.getId(), fileName: fullName } };
-  } catch (err) {
-    return { success: false, message: 'Gagal unggah: ' + (err && err.message ? err.message : err) };
-  }
 }
