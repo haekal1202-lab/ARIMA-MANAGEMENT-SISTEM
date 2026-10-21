@@ -1634,12 +1634,36 @@ function saveSheetRecord_(sheetName, keyField, payload) {
   const sh = ss_().getSheetByName(sheetName);
   if (!sh) return { success: false, message: 'Sheet not found: ' + sheetName };
 
-  const values = sh.getDataRange().getValues();
+  let values = sh.getDataRange().getValues();
   if (!values.length) return { success: false, message: 'Header sheet ' + sheetName + ' belum tersedia.' };
 
-  const headers = values[0].map(function (header) { return String(header || '').trim(); });
+  let headers = values[0].map(function (header) { return String(header || '').trim(); });
+
+  // --- AUTO-CREATE KOLOM BARU JIKA BELUM ADA ---
+  let isModified = false;
+  if (sheetName === 'BILLING' && findColumnIndex_(headers, ['PENERIMA']) < 0) {
+    sh.getRange(1, sh.getLastColumn() + 1).setValue('PENERIMA');
+    isModified = true;
+  }
+  if (sheetName === 'PAYMENTS' && findColumnIndex_(headers, ['REFERENCE_NO']) < 0) {
+    sh.getRange(1, sh.getLastColumn() + 1).setValue('REFERENCE_NO');
+    isModified = true;
+  }
+  if (sheetName === 'SALARY' && findColumnIndex_(headers, ['PENERIMA']) < 0) {
+    sh.getRange(1, sh.getLastColumn() + 1).setValue('PENERIMA');
+    isModified = true;
+  }
+
+  if (isModified) {
+    values = sh.getDataRange().getValues();
+    headers = values[0].map(function (header) { return String(header || '').trim(); });
+  }
+  // ---------------------------------------------
+
   const keyIndex = findColumnIndex_(headers, [keyField]);
   if (keyIndex < 0) return { success: false, message: 'Kolom ' + keyField + ' tidak ditemukan.' };
+
+  // ... (sisa kode di bawahnya biarkan sama seperti sebelumnya)
 
   const record = Object.assign({}, payload && typeof payload === 'object' ? payload : {});
   const mode = String(record.__MODE || 'upsert');
