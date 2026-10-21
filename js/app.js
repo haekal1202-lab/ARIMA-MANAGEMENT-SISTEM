@@ -42,28 +42,29 @@ window.App = (() => {
           label: "Bidang SSW",
           type: "combo",
           required: false,
-          placeholder: "Pilih atau ketik bidang SSW...",
-          options: [
-            "KAIGO",
-            "FOOD SERVICE",
-            "CONSTRUCTION",
-            "AGRICULTURE",
-            "BUILDING CLEANING",
-            "MANUFACTURING",
-            "FISHERY",
-            "AUTO MAINTENANCE",
-            "LAINNYA"
-          ]
+          placeholder: "Pilih atau ketik bidang...",
+          options: ["KAIGO", "FOOD SERVICE", "CONSTRUCTION", "AGRICULTURE", "BUILDING CLEANING", "MANUFACTURING", "FISHERY", "AUTO MAINTENANCE", "LAINNYA"]
         },
+        { key: "NILAI_SSW", label: "Nilai Ujian SSW", type: "select", required: false, options: ["LULUS", "TIDAK LULUS", "BELUM UJIAN"] },
         {
-          key: "JFT_JLPT",
-          label: "Sertifikat Bahasa Jepang",
+          key: "JFT_LEVEL",
+          label: "Sertifikat JFT",
           type: "combo",
           required: false,
-          placeholder: "Pilih atau ketik sertifikat...",
-          options: ["TIDAK ADA", "JFT-BASIC", "JLPT N5", "JLPT N4", "JLPT N3", "JLPT N2", "JLPT N1"]
+          placeholder: "Pilih level JFT...",
+          options: ["A1", "A2", "A2.1", "A2.2", "B1", "B1.1", "B1.2", "B2", "B2.1", "B2.2"]
+        },
+        {
+          key: "JLPT_LEVEL",
+          label: "Sertifikat JLPT",
+          type: "combo",
+          required: false,
+          placeholder: "Pilih level JLPT...",
+          options: ["N5", "N4", "N3", "N2", "N1"]
         },
         { key: "JFT_JLPT_DATE", label: "Tanggal Sertifikat", type: "date", required: false },
+        { key: "FOTO_SISWA_URL", label: "Foto Siswa", type: "file", required: false },
+        { key: "CV_URL", label: "File CV", type: "file", required: false },
         { key: "STATUS", label: "Status", type: "select", required: true, options: ["AKTIF", "NONAKTIF", "LULUS", "KELUAR"] }
       ]
     },
@@ -154,7 +155,7 @@ window.App = (() => {
         { key: "PAYMENT_DATE", label: "Tanggal Pembayaran", type: "date", required: true },
         { key: "AMOUNT", label: "Jumlah Pembayaran", type: "number", required: true },
         { key: "PAYMENT_METHOD", label: "Metode Pembayaran", type: "select", required: true, options: ["CASH", "TRANSFER", "QRIS", "LAINNYA"] },
-                {
+        {
           key: "REFERENCE_NO",
           label: "Penerima",
           type: "select",
@@ -626,7 +627,7 @@ window.App = (() => {
   }
 
   /* =========================================================
-   * GENERIC TABLE
+   * GENERIC TABLE & HEADER
    * ========================================================= */
 
   function renderTable(rows, columns, options = {}) {
@@ -758,7 +759,7 @@ window.App = (() => {
         const script = document.createElement("script");
         script.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js";
         script.onload = () => window.Chart ? resolve(window.Chart) : reject(new Error("Chart.js tidak tersedia."));
-        script.onerror = () => reject(new Error("Chart.js tidak dapat dimuat. Periksa koneksi internet."));
+        script.onerror = () => reject(new Error("Chart.js tidak dapat dimuat."));
         document.head.appendChild(script);
       });
     }
@@ -798,18 +799,22 @@ window.App = (() => {
           </section>
 
           <section class="student-detail-section">
-            <h3>Program SSW</h3>
+            <h3>Program SSW & Sertifikat</h3>
             <div class="student-detail-grid">
               <div><span>Ikut SSW</span><strong>${esc(student.SSW || "Belum diisi")}</strong></div>
               <div><span>Bidang SSW</span><strong>${esc(student.SSW_DETAIL || "-")}</strong></div>
+              <div><span>Nilai SSW</span><strong>${esc(student.NILAI_SSW || "-")}</strong></div>
+              <div><span>Level JFT</span><strong>${esc(student.JFT_LEVEL || "-")}</strong></div>
+              <div><span>Level JLPT</span><strong>${esc(student.JLPT_LEVEL || "-")}</strong></div>
+              <div><span>Tanggal Sertifikat</span><strong>${esc(String(student.JFT_JLPT_DATE || "").slice(0, 10) || "-")}</strong></div>
             </div>
           </section>
 
           <section class="student-detail-section">
-            <h3>Sertifikat Bahasa Jepang</h3>
+            <h3>Berkas Siswa</h3>
             <div class="student-detail-grid">
-              <div><span>Level</span><strong>${esc(student.JFT_JLPT || "Belum diisi")}</strong></div>
-              <div><span>Tanggal Sertifikat</span><strong>${esc(String(student.JFT_JLPT_DATE || "").slice(0, 10) || "-")}</strong></div>
+              <div><span>Foto Siswa</span><strong>${student.FOTO_SISWA_URL ? `<a href="${esc(student.FOTO_SISWA_URL)}" target="_blank" rel="noopener">Lihat Foto</a>` : "-"}</strong></div>
+              <div><span>File CV</span><strong>${student.CV_URL ? `<a href="${esc(student.CV_URL)}" target="_blank" rel="noopener">Lihat CV</a>` : "-"}</strong></div>
             </div>
           </section>
 
@@ -950,7 +955,7 @@ window.App = (() => {
     const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
     return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`;
   }
-  
+
   /* =========================================================
    * SENSEI
    * ========================================================= */
@@ -2348,6 +2353,26 @@ window.App = (() => {
         `;
       }
 
+      if (field.type === "file") {
+        const fileId = `file-${type}-${field.key}`;
+        return `
+          <div class="form-group">
+            <label>${esc(field.label)}</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="file" id="${esc(fileId)}" style="display:none;" />
+              <button type="button" class="btn btn-light" onclick="document.getElementById('${esc(fileId)}').click()">Pilih File</button>
+              <input type="hidden" name="${esc(field.key)}" id="${esc(fileId)}-url" value="${esc(value)}" />
+              <span id="${esc(fileId)}-name" style="font-size:12px;color:#666;">
+                ${value ? "File terpilih" : "Belum ada file"}
+              </span>
+            </div>
+            <div id="${esc(fileId)}-preview" style="margin-top:6px;font-size:12px;">
+              ${value ? `<a href="${esc(value)}" target="_blank" rel="noopener">Lihat File</a>` : ""}
+            </div>
+          </div>
+        `;
+      }
+
       if (field.type === "combo") {
         const listId = `combo-${type}-${field.key}`;
         return `
@@ -2363,263 +2388,4 @@ window.App = (() => {
               autocomplete="off"
             />
             <datalist id="${esc(listId)}">
-              ${(field.options || []).map(option => `<option value="${esc(option)}"></option>`).join("")}
-            </datalist>
-          </div>
-        `;
-      }
-      
-      if (field.type === "select") {
-        return `
-          <div class="form-group">
-            <label>${esc(field.label)} ${field.required ? "<span>*</span>" : ""}</label>
-            <select name="${esc(field.key)}" ${field.required ? "required" : ""}>
-              <option value="">Pilih...</option>
-              ${(field.options || []).map(option => `
-                <option value="${esc(option)}" ${String(value) === String(option) ? "selected" : ""}>${esc(option)}</option>
-              `).join("")}
-            </select>
-          </div>
-        `;
-      }
-
-      if (field.type === "textarea") {
-        return `
-          <div class="form-group">
-            <label>${esc(field.label)} ${field.required ? "<span>*</span>" : ""}</label>
-            <textarea name="${esc(field.key)}" placeholder="${esc(field.placeholder || "")}" ${field.required ? "required" : ""}>${esc(value)}</textarea>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="form-group">
-          <label>${esc(field.label)} ${field.required ? "<span>*</span>" : ""}</label>
-          <input type="${esc(field.type || "text")}" name="${esc(field.key)}" value="${esc(value)}" placeholder="${esc(field.placeholder || "")}" ${field.required ? "required" : ""} />
-        </div>
-      `;
-    }).join("");
-
-    const modal = document.createElement("div");
-    modal.id = "arima-form-modal";
-    modal.className = `modal-overlay form-modal ${type}-form-modal`;
-    modal.innerHTML = `
-      <div class="modal form-modal-shell" role="dialog" aria-modal="true">
-        <div class="form-modal-header">
-          <div class="form-modal-heading">
-            <span class="form-modal-kicker">ARIMA MANAGEMENT SYSTEM</span>
-            <h2>${esc(isEdit ? config.editTitle : config.title)}</h2>
-            <p>${esc(config.description || "Lengkapi data yang diperlukan.")}</p>
-          </div>
-          <button type="button" class="modal-close" id="modal-close">×</button>
-        </div>
-        <form id="arima-form" class="form-grid form-modal-fields">
-          ${fields}
-          <div class="modal-footer form-modal-footer">
-            <button type="button" class="btn" id="modal-cancel">Batal</button>
-            <button type="submit" class="btn btn-primary" id="modal-submit">${isEdit ? "Simpan Perubahan" : "Simpan"}</button>
-          </div>
-        </form>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    function close() {
-      modal.remove();
-    }
-
-    qs("#modal-close", modal)?.addEventListener("click", close);
-    qs("#modal-cancel", modal)?.addEventListener("click", close);
-    modal.addEventListener("click", event => { if (event.target === modal) close(); });
-
-    const form = qs("#arima-form", modal);
-
-    if (type === "salary") {
-      const senseiSelect = qs("#payroll-sensei-id", modal);
-      const periodInput = form?.elements.PERIOD;
-      const bonusInput = form?.elements.BONUS;
-      const deductionInput = form?.elements.DEDUCTION;
-      const preview = qs("#payroll-sensei-preview", modal);
-      let previewRequest = 0;
-
-      const refreshPayrollPreview = async () => {
-        const requestId = ++previewRequest;
-        const selectedSensei = (options.senseiRows || []).find(
-          row => String(row.ID_SENSEI) === String(senseiSelect?.value || "")
-        );
-
-        if (!selectedSensei) {
-          preview.innerHTML = "Pilih sensei untuk melihat tarif dan ringkasan payroll.";
-          return;
-        }
-
-        const profile = `
-          <div class="payroll-profile-line">
-            <strong>${esc(selectedSensei.NAMA || "Tanpa nama")}</strong>
-            <span>${esc(selectedSensei.ID_SENSEI)}</span>
-          </div>
-          <div class="payroll-rate-line">Tarif: ${formatRupiah(selectedSensei.TARIF_PER_JAM || 0)} / JP</div>
-        `;
-
-        if (!periodInput?.value) {
-          preview.innerHTML = profile + `<div class="muted">Pilih periode untuk menghitung payroll.</div>`;
-          return;
-        }
-
-        preview.innerHTML = profile + `<div class="muted">Menghitung dari absensi...</div>`;
-        try {
-          const response = await API.salaryPreview({
-            ID_SENSEI: senseiSelect.value,
-            PERIOD: periodInput.value,
-            BONUS: bonusInput?.value || "0",
-            DEDUCTION: deductionInput?.value || "0"
-          });
-          if (requestId !== previewRequest) return;
-          if (!response?.success) {
-            preview.innerHTML = profile + `<div class="payroll-preview-warning">${esc(response?.message || "Payroll belum dapat dihitung.")}</div>`;
-            return;
-          }
-
-          const summary = response.data || {};
-          preview.innerHTML = profile + `
-            <div class="payroll-preview-stats">
-              <span>${formatNumber(summary.MEETING_COUNT)} pertemuan</span>
-              <span>${formatNumber(summary.HOUR_COUNT)} JP</span>
-              <strong>${formatRupiah(summary.NET_SALARY)} estimasi bersih</strong>
-            </div>
-          `;
-        } catch (error) {
-          if (requestId === previewRequest) {
-            preview.innerHTML = profile + `<div class="payroll-preview-warning">${esc(error.message || "Gagal memuat ringkasan payroll.")}</div>`;
-          }
-        }
-      };
-
-      senseiSelect?.addEventListener("change", refreshPayrollPreview);
-      periodInput?.addEventListener("change", refreshPayrollPreview);
-      bonusInput?.addEventListener("input", refreshPayrollPreview);
-      deductionInput?.addEventListener("input", refreshPayrollPreview);
-      refreshPayrollPreview();
-    }
-
-    if (type === "payments") {
-      const studentSelect = qs("#payment-student-select", modal);
-      const billingSelect = qs("#payment-billing-select", modal);
-      const amountInput = form?.elements.AMOUNT;
-
-      if (billingSelect) {
-        const allOptions = Array.from(billingSelect.querySelectorAll("option"))
-          .filter(opt => opt.value)
-          .map(opt => ({
-            value: opt.value,
-            studentId: String(opt.dataset.studentId || "").trim(),
-            html: opt.outerHTML
-          }));
-
-        const rebuildBillingOptions = () => {
-          const sid = String(studentSelect?.value || "").trim();
-          const filtered = sid ? allOptions.filter(o => o.studentId === sid) : allOptions;
-          const current = billingSelect.value;
-          billingSelect.innerHTML = `<option value="">Pilih tagihan...</option>` + filtered.map(o => o.html).join("");
-          if (Array.from(billingSelect.options).some(o => o.value === current)) {
-            billingSelect.value = current;
-          }
-        };
-
-        const fillFromBilling = () => {
-          const opt = billingSelect.options[billingSelect.selectedIndex];
-          if (!opt || !opt.value) return;
-          if (studentSelect && opt.dataset.studentId) studentSelect.value = opt.dataset.studentId;
-          if (amountInput && opt.dataset.amount) amountInput.value = opt.dataset.amount;
-        };
-
-        studentSelect?.addEventListener("change", rebuildBillingOptions);
-        billingSelect?.addEventListener("change", fillFromBilling);
-        if (studentSelect?.value) rebuildBillingOptions();
-      }
-    }
-
-    form?.addEventListener("submit", async event => {
-      event.preventDefault();
-
-      const submit = qs("#modal-submit", modal);
-      if (submit) {
-        submit.disabled = true;
-        submit.textContent = "Menyimpan...";
-      }
-
-      try {
-        const formData = new FormData(form);
-        const payload = {};
-
-        formFields.forEach(field => {
-          payload[field.key] = formData.get(field.key) || "";
-        });
-
-        if (existing?.__ROW_NUMBER) {
-          payload.__ROW_NUMBER = existing.__ROW_NUMBER;
-        }
-
-        let response;
-        if (isEdit) response = await API.update(type, payload);
-        else response = await API.create(type, payload);
-
-        if (response && response.success === false) {
-          throw new Error(response.message || "Gagal menyimpan data.");
-        }
-
-        showToast(isEdit ? "Data berhasil diperbarui." : "Data berhasil ditambahkan.");
-        close();
-
-        if (type === "billing") {
-          const url = new URL(window.location.href);
-          if (payload.ID_SISWA) url.searchParams.set("studentId", payload.ID_SISWA);
-          window.history.replaceState({}, "", url);
-        }
-
-        if (type === "payments") {
-          const url = new URL(window.location.href);
-          if (payload.ID_SISWA) url.searchParams.set("studentId", payload.ID_SISWA);
-          window.history.replaceState({}, "", url);
-          await load("billing");
-          return;
-        }
-
-        await load(type);
-      } catch (error) {
-        showToast(error.message || "Gagal menyimpan data.", "error");
-        if (submit) {
-          submit.disabled = false;
-          submit.textContent = isEdit ? "Simpan Perubahan" : "Simpan";
-        }
-      }
-    });
-  }
-
-  /* =========================================================
-   * INIT
-   * ========================================================= */
-
-  async function init() {
-    console.log("ARIMA MANAGEMENT SYSTEM initializing...");
-    if (!requireAuth()) return;
-    renderLayout();
-    await load("dashboard");
-  }
-
-  return {
-    init,
-    load,
-    logout,
-    renderDashboard,
-    renderStudents,
-    renderSensei,
-    renderAttendance,
-    renderBilling,
-    renderFinance,
-    renderSalary,
-    renderReports,
-    renderSettings
-  };
-})();
+              ${(field.options || []).map(option
