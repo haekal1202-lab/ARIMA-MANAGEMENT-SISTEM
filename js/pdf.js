@@ -479,7 +479,7 @@ window.ArimaPdf = (() => {
    * KUITANSI PEMBAYARAN
    * ========================================================= */
 
-  async function buildReceipt(payment, student) {
+  async function buildReceipt(payment, student, billing) {  // <-- Tambah billing
     const JsPDF = await ensurePdfLibrary();
     const logoData = await getLogoData();
 
@@ -510,12 +510,15 @@ window.ArimaPdf = (() => {
 
     y += 40;
 
+    // Cari nama penerima: dari Kuitansi, atau kalau kosong ambil dari Tagihan
+    const penerimaName = payment.REFERENCE_NO || (billing && billing.PENERIMA) || "-";
+
     y = drawItemsTable(pdf, MARGIN, y, inner,
       ["Keterangan", "Metode", "Penerima", "Jumlah"],
       [[
         payment.NOTES || ("Pembayaran tagihan " + (payment.BILLING_ID || "-")),
         payment.PAYMENT_METHOD || "-",
-        payment.REFERENCE_NO || "-",
+        penerimaName, // <-- Pakai variabel fallback
         formatRupiah(payment.AMOUNT)
       ]],
       [inner * 0.5, inner * 0.15, inner * 0.2, inner * 0.15],
@@ -546,14 +549,14 @@ window.ArimaPdf = (() => {
 
     y = Math.max(totalBottom, y + 20) + 15;
 
-    const signer = String(payment.REFERENCE_NO || "Admin LPKS Arima Persada").trim();
-    drawSignatureBlock(pdf, pw - MARGIN - 60, y, COMPANY.city, "Hormat kami,", signer);
+    // Tanda tangan pakai fallback juga
+    const receiptSigner = String(penerimaName || "Admin LPKS Arima Persada").trim();
+    drawSignatureBlock(pdf, pw - MARGIN - 60, y, COMPANY.city, "Hormat kami,", receiptSigner);
 
     drawFooter(pdf, "Kuitansi ini sah sebagai bukti pembayaran yang tercatat di sistem LPKS Arima Persada.");
 
     return { pdf, fileName: `kuitansi-${safeFileName(payment.PAYMENT_ID || "pembayaran")}.pdf` };
   }
-
 
   /* =========================================================
    * SURAT TAGIHAN
