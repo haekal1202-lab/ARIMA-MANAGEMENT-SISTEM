@@ -249,6 +249,8 @@ window.API = (() => {
     return call(action, { ...payload, __MODE: "update" });
   }
 
+  async function fileUpload(payload) { return call("fileUpload", payload); }
+  
   async function deleteRecord(type, payload = {}) {
     const action = deleteActions[String(type || "").toLowerCase()];
     if (!action) throw new Error("Aksi hapus tidak tersedia untuk " + type + ".");
